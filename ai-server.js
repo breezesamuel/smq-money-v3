@@ -274,8 +274,9 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-app.listen(PORT, () => {
-  console.log(`
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`
 ╔══════════════════════════════════════════════════════════╗
 ║    AI 智能员工基础架构 — 全AI 自运营公司          ║
 ║              服务器已启动                             ║
@@ -285,6 +286,7 @@ app.listen(PORT, () => {
 ║ 大模型: ${activeModels().map(m => m.id).join('/') || '未配置'}
 ╚══════════════════════════════════════════════════════════╝
   `);
-});
+  });
+}
 
 module.exports = app;

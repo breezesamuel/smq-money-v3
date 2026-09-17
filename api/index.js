@@ -13,6 +13,12 @@
 const { loadTools, setCors, json, notFound, badRequest } = require('./lib');
 const { createLiveOrder, paymentProviderStatus } = require('./payments');
 
+let aiApp = null;
+function getAiApp() {
+  if (!aiApp) aiApp = require('../ai-server');
+  return aiApp;
+}
+
 function readBody(req, cb) {
   let body = '';
   req.on('data', c => { body += c; if (body.length > 1e6) req.destroy(); });
@@ -70,6 +76,12 @@ module.exports = (req, res) => {
   const q = Object.fromEntries(url.searchParams);
   const data = loadTools();
   const tools = data.tools;
+
+  // /api/ai/* -> AI 智能员工架构（express app 直接代理）
+  if (p[0] === 'ai') {
+    delete req.headers['content-length'];
+    return getAiApp()(req, res);
+  }
 
   // GET /api/tools
   if (p[0] === 'tools' && p.length === 1 && req.method === 'GET') {

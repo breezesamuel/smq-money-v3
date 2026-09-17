@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>💰 全托管运营赚钱系统控制台</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:system-ui,sans-serif; background:#0f172a; color:#e2e8f0; min-height:100vh; }
+.header { background:linear-gradient(135deg,#1e293b,#0f172a); padding:20px 30px; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #334155; }
+.header h1 { font-size:1.4rem; }
+.header .status { padding:6px 14px; border-radius:20px; font-size:.85rem; font-weight:600; }
+.status.running { background:#052e16; color:#4ade80; }
+.status.stopped { background:#450a0a; color:#f87171; }
+.container { max-width:1200px; margin:0 auto; padding:24px; }
+.cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:16px; margin-bottom:24px; }
+.card { background:#1e293b; border:1px solid #334155; border-radius:12px; padding:20px; }
+.card h3 { font-size:.85rem; color:#94a3b8; margin-bottom:8px; text-transform:uppercase; }
+.card .value { font-size:1.6rem; font-weight:700; }
+.card .value.green { color:#4ade80; }
+.card .value.blue { color:#60a5fa; }
+.card .value.yellow { color:#facc15; }
+.card .value.purple { color:#c084fc; }
+.actions { display:flex; gap:12px; margin-bottom:24px; flex-wrap:wrap; }
+button { padding:12px 18px; border:0; border-radius:10px; font-size:.95rem; font-weight:600; cursor:pointer; transition:transform .1s; }
+button:hover { transform:translateY(-1px); }
+.btn-start { background:#059669; color:#fff; }
+.btn-stop { background:#dc2626; color:#fff; }
+.btn-gen { background:#6366f1; color:#fff; }
+.btn-pub { background:#2563eb; color:#fff; }
+.btn-sim { background:#d97706; color:#fff; }
+.panel { background:#1e293b; border:1px solid #334155; border-radius:12px; padding:20px; margin-bottom:24px; }
+.panel h2 { font-size:1.1rem; margin-bottom:16px; }
+table { width:100%; border-collapse:collapse; font-size:.9rem; }
+th,td { text-align:left; padding:10px 12px; border-bottom:1px solid #334155; }
+th { color:#94a3b8; font-size:.8rem; text-transform:uppercase; }
+.logs { font-family:monospace; font-size:.8rem; max-height:300px; overflow-y:auto; }
+.logs .log-entry { padding:4px 0; border-bottom:1px solid #1e293b; color:#94a3b8; }
+.log-entry .ts { color:#475569; margin-right:8px; }
+.log-entry .kind-gen { color:#a78bfa; }
+.log-entry .kind-pub { color:#60a5fa; }
+.log-entry .kind-sale { color:#4ade80; }
+.log-entry .kind-error { color:#f87171; }
+select, input { padding:10px 14px; border-radius:8px; border:1px solid #334155; background:#0f172a; color:#e2e8f0; font-size:.9rem; }
+.inline { display:flex; gap:12px; align-items:center; margin-bottom:12px; }
+.legend { display:flex; gap:16px; margin-bottom:12px; font-size:.8rem; color:#94a3b8; }
+.footer { text-align:center; padding:30px; color:#475569; font-size:.8rem; }
+.toast { position:fixed; bottom:30px; left:50%; transform:translateX(-50%); background:#1e293b; border:1px solid #4ade80; padding:12px 24px; border-radius:10px; color:#4ade80; font-size:.9rem; opacity:0; transition:opacity .3s; z-index:999; }
+.toast.show { opacity:1; }
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>💰 全托管运营赚钱系统</h1>
+  <span class="status stopped" id="engineStatus">● 已停止</span>
+</div>
+
+<div class="container">
+  <div class="cards">
+    <div class="card"><h3>产品总数</h3><div class="value blue" id="cProducts">0</div></div>
+    <div class="card"><h3>已发布</h3><div class="value purple" id="cPublished">0</div></div>
+    <div class="card"><h3>总收入</h3><div class="value green" id="cRevenue">¥0</div></div>
+    <div class="card"><h3>值守状态</h3><div class="value yellow" id="cUptime">-</div></div>
+  </div>
+
+  <div class="actions">
+    <button class="btn-start" onclick="startEngine()">▶ 启动24小时值守</button>
+    <button class="btn-stop" onclick="stopEngine()">⏹ 停止</button>
+    <button class="btn-gen" onclick="generateProduct()">⚙️ 自动生成产品</button>
+    <button class="btn-pub" onclick="publishProduct()">📤 自动上载发布</button>
+    <button class="btn-sim" onclick="simulateSale()">💰 模拟销售</button>
+  </div>
+
+  <div class="panel">
+    <h2>📦 已生成产品</h2>
+    <div class="inline">
+      <select id="typeSelect"></select>
+      <input id="nameInput" placeholder="产品名称（可选）">
+      <button class="btn-gen" onclick="generateProduct()">生成</button>
+    </div>
+    <div class="legend"><span>类型：网站 / APP / AI工具 / 痛点工具 / 小程序 / 小游戏 / 桌面AI</span></div>
+    <table>
+      <thead><tr><th>名称</th><th>类型</th><th>文件数</th><th>发布时间</th><th>保存目录</th></tr></thead>
+      <tbody id="productTable"></tbody>
+    </table>
+  </div>
+
+  <div class="panel">
+    <h2>📤 发布记录</h2>
+    <table>
+      <thead><tr><th>产品</th><th>平台</th><th>价格</th><th>时间</th></tr></thead>
+      <tbody id="publishTable"><tr><td colspan="4" style="color:#64748b">暂无发布记录</td></tr></tbody>
+    </table>
+  </div>
+
+  <div class="panel">
+    <h2>🧭 值守日志</h2>
+    <div class="logs" id="logs"></div>
+  </div>
+</div>
+
+<div class="footer">全托管运营赚钱系统 · 24小时值守 · 自动生成/上载/销售</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const API = '/api/v1';
+function toast(msg) { const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 2500); }
+
+async function api(url, opts) {
+  const r = await fetch(url, opts);
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(d.error || '请求失败');
+  return d;
+}
+
+function fmtCNY(n) { return '¥' + (Math.round((n||0) * 100) / 100).toLocaleString(); }
+
+function renderProducts(products) {
+  const tb = document.getElementById('productTable');
+  tb.innerHTML = (products || []).slice().reverse().slice(0, 15).map(p => `
+    <tr><td>${p.name}</td><td>${p.type}</td><td>${p.fileCount}</td>
+    <td>${new Date(p.createdAt).toLocaleTimeString()}</td><td style="color:#64748b;font-size:.8rem">${p.savedDir || '-'}</td></tr>`).join('')
+    || '<tr><td colspan="5" style="color:#64748b">暂无产品，点击「自动生成」开始</td></tr>';
+}
+
+async function refresh() {
+  try {
+    const d = await api('/api/v1/dashboard');
+    document.getElementById('cProducts').textContent = d.products.total;
+    document.getElementById('cPublished').textContent = d.publishers.published;
+    document.getElementById('cRevenue').textContent = fmtCNY(d.publishers.revenue);
+    const status = document.getElementById('engineStatus');
+    const running = d.watchdog.running;
+    status.textContent = running ? '● 值守中' : '● 已停止';
+    status.className = 'status ' + (running ? 'running' : 'stopped');
+    document.getElementById('cUptime').textContent = running ? d.watchdog.uptime : '停止';
+    renderProducts(d.products.recent);
+    const pt = document.getElementById('publishTable');
+    if (d.publishers.publishedList && d.publishers.publishedList.length) {
+      pt.innerHTML = d.publishers.publishedList.map(p => `
+        <tr><td>${p.title}</td><td>${p.platform}</td><td>${fmtCNY(p.price)}</td><td>${new Date(p.publishedAt).toLocaleTimeString()}</td></tr>`).join('');
+    }
+    const logs = document.getElementById('logs');
+    logs.innerHTML = d.logs.slice().reverse().map(l => {
+      const kind = l.message.match(/\[(.*?)\]/)?.[1] || 'info';
+      const base = l.message.replace(/^.*\[(.*?)\] /, '');
+      return `<div class="log-entry"><span class="ts">${new Date(l.timestamp).toLocaleTimeString()}</span><span class="kind-${kind}">${base}</span></div>`;
+    }).join('') || '<div class="log-entry">等待日志…</div>';
+  } catch (e) {
+    document.getElementById('logs').innerHTML = `<div class="log-entry" style="color:#f87171">刷新失败: ${e.message}</div>`;
+  }
+}
+
+async function startEngine() { await api('/api/v1/engine/start', { method:'POST' }); toast('引擎已启动，进入24小时值守'); refresh(); }
+async function stopEngine() { await api('/api/v1/engine/stop', { method:'POST' }); toast('引擎已停止'); refresh(); }
+
+async function generateProduct() {
+  const type = document.getElementById('typeSelect').value;
+  const name = document.getElementById('nameInput').value.trim();
+  const d = await api('/api/v1/product/generate', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ type, name }) });
+  toast(`✅ 已生成: ${d.product.name}`);
+  refresh();
+}
+async function publishProduct() {
+  const products = await api('/api/v1/products');
+  if (!products.length) { toast('请先生成产品'); return; }
+  const last = products[products.length - 1];
+  const d = await api('/api/v1/publish', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ productId: last.id }) });
+  toast(`📤 已发布: ${d.listing.title}`);
+  refresh();
+}
+async function simulateSale() {
+  const d = await api('/api/v1/publish/stats');
+  const list = d.publishedList || [];
+  if (!list.length) { toast('暂无已发布产品，先发布'); return; }
+  const listings = await api('/api/v1/publish/stats');
+  const listing = (listings.salesByListing || []).slice(-1)[0] || null;
+  if (!listing || listing.sales === undefined) {
+    toast('暂无可模拟销售的上架条目');
+    return;
+  }
+  await api('/api/v1/simulate/sale', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ listingId: listing.sales }) });
+  toast('💰 已模拟销售');
+  refresh();
+}
+async function loadTypes() {
+  const types = await api('/api/v1/product/types');
+  const sel = document.getElementById('typeSelect');
+  sel.innerHTML = types.map(t => `<option value="${t.key}">${t.name}</option>`).join('');
+}
+loadTypes();
+refresh();
+setInterval(refresh, 5000);
+</script>
+</body>
+</html>

@@ -1,0 +1,47 @@
+{
+  "name": "smq-v3",
+  "version": "3.0.0",
+  "description": "SMQ AI Army Service System",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "build": "cd frontend && npm install && npm run build"
+  },
+  "dependencies": {
+    "axios": "^1.15.2",
+    "cors": "^2.8.5",
+    "express": "^4.18.2",
+    "moltspay": "^1.4.1",
+    "playwright": "^1.59.1",
+    "puppeteer-core": "^24.41.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "vercel": {
+    "builds": [
+      {
+        "src": "api/server.js",
+        "use": "@vercel/node"
+      },
+      {
+        "src": "frontend/package.json",
+        "use": "@vercel/static-build",
+        "config": {
+          "buildCommand": "npm run build",
+          "outputDirectory": "dist"
+        }
+      }
+    ],
+    "routes": [
+      {
+        "src": "/api/(.*)",
+        "dest": "/api/server.js"
+      },
+      {
+        "src": "/(.*)",
+        "dest": "/frontend/dist/$1"
+      }
+    ]
+  }
+}

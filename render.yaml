@@ -1,0 +1,14 @@
+services:
+  - name: smq-money
+    type: web
+    region: singapore
+    repo: https://github.com/breezesamuel/smq-money
+    branch: main
+    buildCommand: npm install
+    startCommand: node server.js
+    envVars:
+      - key: PORT
+        value: "10000"
+      - key: RATE_USD_TO_CNY
+        value: "7.5"
+    plan: free

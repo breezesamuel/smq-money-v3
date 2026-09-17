@@ -1,0 +1,24 @@
+name: Render Deploy
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  render-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Trigger Render Deploy Hook
+        env:
+          RENDER_DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
+        run: |
+          if [ -z "$RENDER_DEPLOY_HOOK" ]; then
+            echo "Render Deploy Hook is not set. Set it in Repository Secrets as RENDER_DEPLOY_HOOK."
+            exit 1
+          fi
+          curl -X POST -s --fail "$RENDER_DEPLOY_HOOK" || { echo "Render deploy hook failed"; exit 1; }
+          echo "Render deploy hook triggered"

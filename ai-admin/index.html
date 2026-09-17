@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI 智能员工指挥部</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif; background: #0b1120; color: #e2e8f0; }
+.container { max-width: 1100px; margin: 0 auto; padding: 24px 16px 60px; }
+h1 { font-size: 1.8rem; background: linear-gradient(90deg, #60a5fa, #a78bfa); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 6px; }
+.sub { color: #94a3b8; margin-bottom: 24px; font-size: .95rem; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 14px; margin-bottom: 24px; }
+.card { background: #111827; border: 1px solid #1e293b; border-radius: 14px; padding: 18px; }
+.card h3 { font-size: 1rem; color: #f1f5f9; margin-bottom: 8px; }
+.card .role { color: #818cf8; font-size: .8rem; }
+.card .dept { color: #64748b; font-size: .75rem; margin: 2px 0 10px; }
+.stat { font-size: .85rem; color: #94a3b8; margin: 4px 0; }
+.stat b { color: #34d399; }
+.btn { background: #4f46e5; color: #fff; border: 0; padding: 9px 16px; border-radius: 8px; cursor: pointer; font-size: .85rem; margin-top: 8px; }
+.btn:hover { background: #6366f1; }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+.result-box { background: #0d1526; border: 1px solid #1e293b; border-radius: 12px; padding: 16px; white-space: pre-wrap; font-size: .9rem; line-height: 1.7; color: #93c5fd; max-height: 320px; overflow: auto; }
+.section-title { font-size: 1.15rem; color: #f1f5f9; margin: 28px 0 12px; }
+.models { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 24px; }
+.model-chip { font-size: .8rem; padding: 6px 12px; border-radius: 20px; background: rgba(16,185,129,.1); color: #34d399; border: 1px solid rgba(16,185,129,.3); }
+select, input, textarea { background: #111827; border: 1px solid #334155; color: #e2e8f0; border-radius: 8px; padding: 10px 12px; font-size: .9rem; width: 100%; margin: 6px 0; }
+.meter { height: 8px; background: #1e293b; border-radius: 8px; overflow: hidden; margin-top: 6px; }
+.timestamp { color: #64748b; font-size: .75rem; }
+.wallet-row { font-family: monospace; font-size: .78rem; color: #64748b; word-break: break-all; }
+.health-bar { display: flex; align-items: center; gap: 10px; padding: 12px 16px; background: rgba(16,185,129,.08); border: 1px solid rgba(16,185,129,.25); border-radius: 12px; margin-bottom: 20px; font-size: .9rem; }
+.dot { width: 10px; height: 10px; border-radius: 50%; background: #34d399; animation: pulse 2s infinite; }
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .4; } }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>🤖 AI 智能员工指挥部</h1>
+  <p class="sub">8 位 C 层 AI 员工 · 多模型路由 · 24 小时自运营</p>
+
+  <div class="health-bar" id="healthBar"><span class="dot"></span><span>核心系统运行中</span></div>
+
+  <div class="section-title">🧠 大模型集群</div>
+  <div class="models" id="models"></div>
+
+  <div class="section-title">👔 执行团队</div>
+  <div class="grid" id="orgGrid"></div>
+
+  <div class="section-title">📟 指令台（向 AI 员工派发任务）</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+    <div>
+      <label>员工角色</label>
+      <select id="roleSel"></select>
+    </div>
+    <div>
+      <label>任务类型</label>
+      <input id="kindInput" placeholder="如: weekly_plan / pricing_strategy / cost_analysis">
+    </div>
+  </div>
+  <textarea id="taskInput" rows="4" placeholder='任务数据 (JSON)，如: {"revenue": 30000, "costs": 12000}'></textarea>
+  <button class="btn" id="execBtn">🚀 派遣任务给 AI 员工</button>
+  <div id="resultBox" class="result-box" style="display:none;margin-top:16px"></div>
+
+  <div class="section-title">📤 组织信息</div>
+  <div class="card" id="walletCard"></div>
+</div>
+
+<script>
+const API = '/api/ai';
+const ROLE_TASKS = {
+  CEO: { kind: 'weekly_board_meeting', data: { "instructions": "Review weekly performance and set next week priorities" } },
+  CFO: { kind: 'financial_analysis', data: { "revenue": 30000, "costs": 12000, "currency": "CNY" } },
+  COO: { kind: 'operational_plan', data: { "goal": "ship 317 tools to market, improve fulfillment speed" } },
+  CTO: { kind: 'architecture_review', data: { "stack": "Vercel + React + Supabase, multi-model router" } },
+  CMO: { kind: 'marketing_campaign', data: { "budget": 5000, "channels": ["seo", "social", "referral"] } },
+  CSO: { kind: 'sales_strategy', data: { "product": "pain-point tools marketplace", "tier": "free10->paid" } },
+  CRO: { kind: 'risk_review', data: { "concerns": "payment fraud, API key security, RLS policies" } },
+  CCSU: { kind: 'support_policy', data: { "goal": "customer retention and satisfaction" } }
+};
+
+async function load() {
+  try {
+    const [org, models] = await Promise.all([
+      fetch(API + '/org').then(r => r.json()),
+      fetch(API + '/models').then(r => r.json())
+    ]);
+    renderOrg(org);
+    renderModels(models);
+    renderWallets(org.wallets);
+    fillRoleSelect(org.profiles);
+  } catch (e) {
+    document.getElementById('healthBar').innerHTML = '<span style="color:#f87171">⚠ 无法连接 AI 服务器</span>';
+  }
+}
+
+function renderOrg(org) {
+  document.getElementById('orgGrid').innerHTML = org.profiles.map(p => {
+    const s = p.stats;
+    const level = Math.min(s.tasksExecuted, 10) / 10 * 100;
+    return `<div class="card">
+      <h3>${p.name}</h3>
+      <div class="role">ROLE: ${p.role}</div>
+      <div class="dept">${p.department}</div>
+      <div class="stat">任务执行: <b>${s.tasksExecuted}</b></div>
+      <div class="stat">平均耗时: ${s.avgLatencyMs}ms</div>
+      <div class="stat">自主度: ${p.autonomy}%</div>
+      <div class="meter"><div style="width:${level}%;background:#4f46e5;height:100%"></div></div>
+      <button class="btn" onclick="quickTask('${p.role}')">⚡ 快速派遣</button>
+    </div>`;
+  }).join('');
+}
+
+function renderModels(models) {
+  document.getElementById('models').innerHTML = models.active.map(m =>
+    `<span class="model-chip">${m.name} <span style="opacity:.7">(${m.model})</span></span>`
+  ).join('') || '<span style="color:#f87171">无模型</span>';
+  document.getElementById('models').title = 'stats: ' + JSON.stringify(models.stats);
+}
+
+function renderWallets(w) {
+  if (!w) return;
+  document.getElementById('walletCard').innerHTML = Object.entries(w)
+    .map(([k, v]) => v ? `<div class="wallet-row"><b>${k}</b>: ${v}</div>` : '').join('');
+}
+
+function fillRoleSelect(profiles) {
+  document.getElementById('roleSel').innerHTML = profiles.map(p =>
+    `<option value="${p.role}">${p.name} (${p.role})</option>`).join('');
+}
+
+function quickTask(role) {
+  document.getElementById('roleSel').value = role;
+  document.getElementById('taskInput').value = JSON.stringify(ROLE_TASKS[role]?.data || {}, null, 2);
+  execTask();
+}
+
+async function execTask() {
+  const role = document.getElementById('roleSel').value;
+  const kind = document.getElementById('kindInput').value || 'general_task';
+  let data = {};
+  try { data = JSON.parse(document.getElementById('taskInput').value || '{}'); } catch (e) { data = { raw: document.getElementById('taskInput').value }; }
+  const btn = document.getElementById('execBtn');
+  btn.disabled = true; btn.textContent = '⏳ AI 员工正在思考...';
+  const box = document.getElementById('resultBox');
+  box.style.display = 'block'; box.textContent = '...';
+
+  try {
+    const r = await fetch(`${API}/org/${role}/task`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ kind, data })
+    });
+    const d = await r.json();
+    if (d.success) {
+      box.textContent = `# ${role} 任务 ${kind} 完成\n\n（模型: ${d.result.model} · ${d.result.provider}）\n\n${d.result.result}`;
+    } else {
+      box.textContent = '错误: ' + JSON.stringify(d);
+    }
+  } catch (e) {
+    box.textContent = '请求失败: ' + e.message;
+  }
+  btn.disabled = false; btn.textContent = '🚀 派遣任务给 AI 员工';
+  setTimeout(load, 1500);
+}
+
+document.getElementById('execBtn').onclick = execTask;
+document.addEventListener('DOMContentLoaded', load);
+</script>
+</body>
+</html>

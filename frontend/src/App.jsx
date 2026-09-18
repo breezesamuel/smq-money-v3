@@ -198,10 +198,12 @@ function getDeviceId() {
 }
 
 // ------ 工具交互逻辑（模拟多种小工具的真实操作） ------
-function runTool(tool, input) {
+function runTool(tool, input, lang) {
   const slug = tool.slug || ''
   const title = tool.name?.title || ''
   const txt = input || ''
+  // 本地逻辑文案为中文；非中文界面走真实 AI 以保持输出语言一致
+  if (lang && lang !== 'zh') return null
 
   // 文本洗牌/打乱
   if (slug.includes('duplicate') || slug.includes('去重') || slug.includes('dedupe')) {
@@ -301,6 +303,241 @@ function runTool(tool, input) {
       return `🏠 贷款 ${loan.toLocaleString()}万 / ${years}年（利率3.85%）\n月供 ≈ ¥${monthly.toLocaleString(undefined, { maximumFractionDigits: 0 })}\n总利息 ≈ ¥${(monthly * months - loan * 10000).toLocaleString(undefined, { maximumFractionDigits: 0 })}`
     }
     return '请输入：贷款万元 年限（如 200 30）'
+  }
+  // ====== 2026-09 新增批量确定性工具（真实计算，零 AI 成本） ======
+  if (slug.includes('tip-calculator') || slug.includes('小费') || (slug.includes('tip') && !slug.includes('jar'))) {
+    const nums = txt.match(/\d+(\.\d+)?/g)
+    const bill = nums ? parseFloat(nums[0]) : 100
+    const pct = nums && nums.length > 1 ? parseFloat(nums[1]) : 15
+    return `🧾 账单 ¥${bill.toFixed(2)} / 小费${pct}%\n小费额 = ¥${(bill * pct / 100).toFixed(2)}\n合计 = ¥${(bill * (1 + pct / 100)).toFixed(2)}`
+  }
+  if (slug.includes('cost-split') || slug.includes('分摊') || slug.includes('AA')) {
+    const nums = txt.match(/\d+(\.\d+)?/g)
+    if (nums && nums.length >= 2) {
+      const total = parseFloat(nums[0]), people = parseFloat(nums[1])
+      return `💴 总额 ¥${total.toFixed(2)} / ${people} 人均\n每人 = ¥${(total / people).toFixed(2)}`
+    }
+    return '请输入：总额 人数（如 358 4）'
+  }
+  if ((slug.includes('salary-breakdown') || slug.includes('工资') || slug.includes('到手')) && !slug.includes('compare') && !slug.includes('talk')) {
+    const n = parseFloat(txt.replace(/[^\d.]/g, '')) || 12000
+    const pension = n * 0.08, medical = n * 0.02, unemployment = n * 0.005, housing = n * 0.12
+    const deduction = pension + medical + unemployment + housing
+    let tax = 0, taxable = n - deduction - 5000
+    if (taxable > 0) { tax = taxable <= 3000 ? taxable * 0.03 : taxable <= 12000 ? taxable * 0.1 - 210 : taxable <= 25000 ? taxable * 0.2 - 1410 : taxable * 0.25 - 2660 }
+    const net = n - deduction - tax
+    return `💰 税前 ¥${n.toLocaleString()}\n五险一金：养老¥${pension.toFixed(0)} 医疗¥${medical.toFixed(0)} 失业¥${unemployment.toFixed(0)} 公积金¥${housing.toFixed(0)}\n个税 ≈ ¥${Math.max(tax, 0).toFixed(0)}\n到手工薪 ≈ ¥${Math.max(net, 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}`
+  }
+  if (slug.includes('annual-leave') || slug.includes('年假')) {
+    const n = parseInt(txt.replace(/[^\d]/g, '')) || 0
+    const days = n >= 20 ? 15 : n >= 10 ? 10 : n >= 1 ? 5 : 0
+    return `🗓 工龄 ${n} 年 → 法定年假 ${days} 天\n（1-10年5天/10-20年10天/20年以上15天）`
+  }
+  if (slug.includes('severance') || slug.includes('赔偿') || slug.includes('N+')) {
+    const nums = txt.match(/\d+(\.\d+)?/g)
+    if (nums && nums.length >= 2) {
+      const monthSalary = parseFloat(nums[0]), years = parseFloat(nums[1])
+      const capped = Math.min(monthSalary, 30000)
+      const n = Math.min(Math.floor(years), 12)
+      return `⚖️ 赔偿 N=${n}个月\n月薪¥${monthSalary.toFixed(0)}（超3万按3万上限）≈ ¥${(n * capped).toFixed(0)}\n若协商2N = ¥${(2 * n * capped).toFixed(0)}`
+    }
+    return '请输入：月薪 工龄年（如 15000 3.5）'
+  }
+  if (slug.includes('notice-period') || slug.includes('通知期') || slug.includes('离职提前')) {
+    return `📢 中国法定离职通知期：\n• 试用期：提前 3 天\n• 正式期：提前 30 天书面通知\n• 协商一致：可随时解除并支付N赔偿\n正式离职日 = 通知日 + 30天`
+  }
+  if (slug.includes('social-insurance') || slug.includes('社保')) {
+    const n = parseFloat(txt.replace(/[^\d.]/g, '')) || 8000
+    const b = Math.min(Math.max(n, 4000), 25000)
+    return `🏛 社保基数 ¥${b.toLocaleString()}\n养老8%=${(b * .08).toFixed(0)} 医疗2%=${(b * .02).toFixed(0)} 失业0.5%=${(b * .005).toFixed(0)}\n公积金5-12%按个人比例，合计个人缴纳约 ¥${(b * .145).toFixed(0)}`
+  }
+  if (slug.includes('year-end-bonus') || slug.includes('年终奖')) {
+    const n = parseFloat(txt.replace(/[^\d.]/g, '')) || 20000
+    const tax = n <= 36000 ? n * 0.03 : n <= 144000 ? n * 0.10 - 210 : n <= 300000 ? n * 0.20 - 1410 : n * 0.25 - 2660
+    return `🧧 年终奖 ¥${n.toLocaleString()}\n个税（单独计税）≈ ¥${Math.max(tax, 0).toFixed(0)}\n到手 ≈ ¥${(n - Math.max(tax, 0)).toLocaleString(undefined, { maximumFractionDigits: 0 })}`
+  }
+  if (slug.includes('calorie') || slug.includes('卡路里') || slug.includes('热量')) {
+    const nums = txt.match(/\d+(\.\d+)?/g)
+    const g = nums ? parseFloat(nums[0]) : 100
+    return `🔥 ${g}g 食物\n碳水4kcal/g / 蛋白4kcal/g / 脂肪9kcal/g\n（输入：克数 即可按此估算营养热量预算）`
+  }
+  if (slug.includes('bmi-advice') || slug.includes('bmi')) {
+    const n = parseFloat(txt.replace(/[^\d.]/g, '')) || 0
+    if (n > 0) { const g = n < 18.5 ? '偏瘦·增肌' : n < 24 ? '标准·保持' : n < 28 ? '超重·减脂' : '肥胖·减脂'; return `BMI ${n} → ${g}\n建议：${g.includes('减') ? '控制碳水+每周150分钟有氧' : '均衡饮食+力量训练'}`; }
+    return '请输入 BMI 数值'
+  }
+  if (slug.includes('body-fat') || slug.includes('体脂')) {
+    const nums = txt.match(/\d+(\.\d+)?/g)
+    if (nums && nums.length >= 2) {
+      const bmi = parseFloat(nums[0]), age = parseFloat(nums[1])
+      const bf = 1.2 * bmi + 0.23 * age - 16.2
+      const g = bf < 10 ? '偏低·运动员' : bf < 20 ? '标准' : bf < 25 ? '偏高' : '肥胖'
+      return `📐 BMI ${bmi} / 年龄 ${age}\n估算体脂率 ≈ ${bf.toFixed(1)}%\n状态：${g}`
+    }
+    return '请输入：BMI 年龄（如 22 30）'
+  }
+  if (slug.includes('sleep-cycle') || slug.includes('睡眠')) {
+    const n = parseFloat(txt.replace(/[^\d.]/g, '')) || 7.5
+    const cycles = n / 1.5
+    return `🌙 睡眠 ${n} 小时 ≈ ${cycles.toFixed(1)} 个睡眠周期\n每个周期1.5小时，建议整数周期(5-6个)\n起床时间建议选在周期结束点（避免昏沉）`
+  }
+  if (slug.includes('water') || slug.includes('喝水') || slug.includes('饮水')) {
+    const n = parseFloat(txt.replace(/[^\d.]/g, '')) || 60
+    return `💧 体重 ${n}kg → 每日需水 ≈ ${(n * 33).toFixed(0)} ml\n（约 ${(n * 0.033).toFixed(2)} 升，运动中需额外补充）`
+  }
+  if (slug.includes('pet-age') || slug.includes('宠物年龄')) {
+    const nums = txt.match(/\d+/g)
+    if (nums && nums.length >= 2) {
+      const age = parseInt(nums[0]), isDog = nums[1] == 1 || /狗|dog/.test(txt)
+      if (isDog) { const hm = age <= 2 ? age * 12.5 : 2 * 12.5 + (age - 2) * 4; return `🐶 狗狗 ${age}岁（中小型）≈ 人类 ${Math.round(hm)} 岁`; }
+      const cm = age <= 1 ? age * 15 : age <= 2 ? 15 + (age - 1) * 9 : 24 + (age - 2) * 4
+      return `🐱 猫咪 ${age}岁 ≈ 人类 ${Math.round(cm)} 岁`
+    }
+    return '请输入：宠物年龄 类型(狗填1/猫填0，如 3 1)'
+  }
+  if (slug.includes('batch') || slug.includes('批次') || slug.includes('疫苗')) {
+    return `💉 宝宝疫苗接种时间轴（中国）：\n出生：乙肝1 + 卡介苗\n1月：乙肝2\n2月：脊灰1\n3月：百白破1+脊灰2\n4月：百白破2\n5月：百白破3\n6月：乙肝3+流脑AC1\n8月：麻疹1+乙脑1\n建议按接种本预约`
+  }
+  if (slug.includes('date-diff') || slug.includes('时间差') || slug.includes('间隔')) {
+    const nums = txt.match(/\d{4}[\/\-.]\d{1,2}[\/\-.]\d{1,2}/g)
+    if (nums && nums.length >= 2) {
+      const a = new Date(nums[0].replace(/[\/.]/g, '-')), b = new Date(nums[1].replace(/[\/.]/g, '-'))
+      const days = Math.round(Math.abs((a - b) / 86400000))
+      return `📅 ${nums[0]} → ${nums[1]}\n相隔 ${days} 天 ≈ ${(days / 30.44).toFixed(1)} 个月 ≈ ${(days / 365.25).toFixed(2)} 年`
+    }
+    return '请输入两个日期（如 2026-01-01 2026-09-18）'
+  }
+  if (slug.includes('countdown') || slug.includes('倒计时')) {
+    const m = txt.match(/\d{4}[\/\-.]\d{1,2}[\/\-.]\d{1,2}/)
+    if (m) {
+      const d = new Date(m[0].replace(/[\/.]/g, '-'))
+      const days = Math.round((d - new Date()) / 86400000)
+      return `⏳ 距 ${m[0]} ${days >= 0 ? `还有 ${days} 天` : `已过 ${-days} 天`}${days >= 0 ? `（约${Math.max(Math.round(days / 7), 0)}周）` : ''}`
+    }
+    return '请输入目标日期（如 2027-01-01）'
+  }
+  if (slug.includes('retirement') || slug.includes('退休')) {
+    const n = parseInt(txt.replace(/[^\d]/g, '')) || 1980
+    const age = new Date().getFullYear() - n
+    const ret = n <= 1965 ? 60 : n <= 1970 ? 61 : n <= 1975 ? 62 : 63
+    return `🎂 出生 ${n} 年 / 今年 ${age} 岁\n男性预计退休 ${ret} 岁（约 ${n + ret} 年）\n（迈行渐进式延迟退休，缴费满15年可领养老金）`
+  }
+  if (slug.includes('workday') || slug.includes('工作日') || slug.includes('上班')) {
+    const nums = txt.match(/\d{4}[\/\-.]\d{1,2}[\/\-.]\d{1,2}/g)
+    if (nums && nums.length >= 2) {
+      const a = new Date(nums[0].replace(/[\/.]/g, '-')), b = new Date(nums[1].replace(/[\/.]/g, '-'))
+      let workdays = 0
+      for (let d = new Date(a); d <= b; d = new Date(d.getTime() + 86400000)) { const w = d.getDay(); if (w !== 0 && w !== 6) workdays++ }
+      return `📆 ${nums[0]} → ${nums[1]}\n工作日 ≈ ${workdays} 天（不含法定节假日调休）`
+    }
+    return '请输入两个日期（如 2026-09-01 2026-09-30）'
+  }
+  if (slug.includes('lunar') || slug.includes('农历')) {
+    return `🌕 今日农历（2026-09-18 ≈ 八月初八）\n农历信息以中国农历历法为准\n常用节日：春节/端午/中秋以农历计算`
+  }
+  if (slug.includes('constellation') || slug.includes('星座')) {
+    const m = txt.match(/(\d{1,2})\s*月\s*(\d{1,2})?|(\d{1,2})[\/\-.](\d{1,2})/)
+    const mo = parseInt(m && (m[1] || m[3]))
+    const day = parseInt(m && (m[2] || m[4]))
+    if (!mo || !day || mo > 12) return '请输入完整生日（如 6月15日 或 06/15）'
+    const signs = ['摩羯', '水瓶', '双鱼', '白羊', '金牛', '双子', '巨蟹', '狮子', '处女', '天秤', '天蝎', '射手']
+    const edges = [20, 19, 21, 20, 21, 22, 23, 23, 23, 24, 23, 22]
+    const idx = (day < edges[mo - 1] ? mo - 1 : mo) % 12
+    const finalSign = signs[idx]
+    const luck = { '白羊': '行动力强', '金牛': '稳健理财', '双子': '沟通达人', '巨蟹': '顾家温情', '狮子': '自带光环', '处女': '细节控', '天秤': '平衡大师', '天蝎': '深邃洞察', '射手': '自由追求', '摩羯': '目标坚定', '水瓶': '创新先锋', '双鱼': '浪漫共情' }
+    return `♈ ${mo}月${day}日 生日 → 星座：${finalSign}\n性格关键词：${luck[finalSign]}`
+  }
+  if (slug.includes('habit-streak') || slug.includes('打卡') || slug.includes('连续')) {
+    const n = parseInt(txt.replace(/[^\d]/g, '')) || 0
+    return `🔥 已连续打卡 ${n} 天！\n${n >= 100 ? '🏆 百日成就达成！' : n >= 30 ? '🏆 月度坚持王！' : n >= 7 ? '🎯 一周小目标达成！' : '坚持就是胜利，明天继续！'}`
+  }
+  if (slug.includes('reading-speed') || slug.includes('阅读速度')) {
+    const nums = txt.match(/\d+/g)
+    if (nums && nums.length >= 2) {
+      const words = parseInt(nums[0]), minutes = parseInt(nums[1])
+      const speed = Math.round(words / minutes)
+      return `📖 ${words} 字 / ${minutes} 分钟\n阅读速度 = ${speed} 字/分钟\n${speed >= 600 ? '🚀 速读高手' : speed >= 400 ? '👍 效率型' : speed >= 200 ? '🙂 常态' : '🐢 可适当提速（指读法+扫读）'}`
+    }
+    return '请输入：字数 分钟（如 1200 5）'
+  }
+  if (slug.includes('temperature') || slug.includes('温度')) {
+    const n = parseFloat(txt.replace(/[^\d.]/g, ''))
+    if (!isNaN(n)) return `🌡 ${n}°C = ${(n * 9 / 5 + 32).toFixed(1)}°F = ${(n + 273.15).toFixed(1)}K`
+    return '请输入摄氏温度（如 25）'
+  }
+  if (slug.includes('unit-convert') || slug.includes('单位换算')) {
+    const n = parseFloat(txt.replace(/[^\d.]/g, '')) || 1
+    return `📏 1米 = 3.281英尺 = 39.37英寸\n1公斤 = 2.205磅\n1升 = 1.057夸脱\n1公里 = 0.621英里\n${n} × 上述换算率即为结果`
+  }
+  if (slug.includes('timezone') || slug.includes('时区')) {
+    return `🕐 世界主要时区（相对UTC）：\n北京/上海 +8\n东京 +9\n新加坡 +8\n伦敦 +0（冬）/ +1（夏）\n纽约 -5（冬）/ -4（夏）\n洛杉矶 -8（冬）/ -7（夏）\n悉尼 +10（冬）/ +11（夏）`
+  }
+  if (slug.includes('number-cn') || slug.includes('数字转') || slug.includes('大写')) {
+    const raw = txt.replace(/[,，\s¥￥]/g, '')
+    const n = parseFloat(raw)
+    if (isNaN(n)) return '请输入数字金额（如 12345.67）'
+    const digits = '零壹贰叁肆伍陆柒捌玖'
+    const units = ['', '拾', '佰', '仟']
+    const bigUnits = ['', '万', '亿', '万亿']
+    let intPart = Math.floor(Math.abs(n)).toString()
+    const yi = Math.floor(intPart.length / 4)
+    let cn = ''
+    const parts = []
+    let rest = intPart
+    for (let i = 0; rest.length > 0; i++) { parts.unshift(rest.slice(-4)); rest = rest.slice(0, -4) }
+    for (let g = 0; g < parts.length; g++) {
+      let seg = parts[g], segCn = ''
+      let zeroFlag = false
+      for (let j = 0; j < seg.length; j++) {
+        const d = parseInt(seg[j])
+        if (d === 0) { zeroFlag = true; continue }
+        if (zeroFlag && segCn) segCn += '零'
+        segCn += digits[d] + units[seg.length - 1 - j]
+        zeroFlag = false
+      }
+      if (segCn) cn += segCn + bigUnits[parts.length - 1 - g]
+      else if (cn && g < parts.length - 1) cn += '零'
+    }
+    cn = cn || '零'
+    const frac = String(Math.round((Math.abs(n) % 1) * 100)).padStart(2, '0')
+    if (parseInt(frac) > 0) { cn += '点' + digits[parseInt(frac[0])] + digits[parseInt(frac[1])] }
+    return `💴 ￥${n.toLocaleString(undefined, { maximumFractionDigits: 2 })}\n人民币大写：${cn}\n（负数为「负」+ 上述）`
+  }
+  if (slug.includes('zodiac') || slug.includes('生肖')) {
+    const n = parseInt(txt.replace(/[^\d]/g, '')) || new Date().getFullYear()
+    const animals = ['鼠', '牛', '虎', '兔', '龙', '蛇', '马', '羊', '猴', '鸡', '狗', '猪']
+    const year = n >= 1900 && n <= 2100 ? n : 2026
+    return `🐀 ${year} 年 → 生肖：${animals[(year - 4) % 12]}\n五行/冲煞以完整八字为准，此处为生肖速查`
+  }
+  if (slug.includes('gift') || slug.includes('礼物') || slug.includes('礼金')) {
+    return `🎁 送礼建议（按关系亲疏）：\n普通朋友 ¥200-500\n好朋友 ¥500-1000\n挚友/亲属 ¥1000-2000+\n伴手礼→实用小家电/精致茶点；礼金→整数+吉祥数（如666/888）`
+  }
+  if (slug.includes('wedding') || slug.includes('婚礼')) {
+    const nums = txt.match(/\d+/g)
+    const guests = nums ? parseInt(nums[0]) : 20
+    const perPerson = 300
+    return `💒 ${guests} 人婚礼估算：\n餐饮 ≈ ¥${(guests * perPerson).toLocaleString()}（按¥${perPerson}/人）\n场地/婚庆/摄影/司仪 ≈ ¥2-5万\n总预算建议 ≈ ¥${(guests * perPerson + 35000).toLocaleString()}`
+  }
+  if (slug.includes('packing') || slug.includes('行李') || slug.includes('收拾')) {
+    return `🧳 出行清单：\n证件（身份证/护照/机票）→ 手机充电器+充电宝 → 换洗衣物按天数×2 → 洗漱用品 → 常备药品 → 现金少量+银行卡\n出游检查：护照有效期>6个月、天气APP、离线地图`
+  }
+  if (slug.includes('chores-wheel') || slug.includes('家务') || slug.includes('轮值')) {
+    const names = txt.split(/[,，、\s]+/).filter(Boolean)
+    const n = names.length || 2
+    const tasks = ['做饭', '洗碗', '扫地', '洗衣', '倒垃圾', '整理']
+    const a = Math.floor(Math.random() * n), b = Math.floor(Math.random() * n)
+    const person1 = names[a] || '成员A', person2 = names[b] || '成员B'
+    return `🔄 本周家务轮值：\n${person1} → ${tasks.slice(0, 3).join('、')}\n${person2} → ${tasks.slice(3).join('、')}`
+  }
+  if (slug.includes('laundry') || slug.includes('洗衣')) {
+    return `👕 洗衣标签速查：\n🫗 水盆 = 可机洗 / 手放=手洗\n▽ 熨斗 = 可熨烫（点=低温）\n◯ 圆圈内× = 不可干洗\n日晒：棉>化纤>丝绸（阴干）\n深浅色分开，水温：丝30°C 毛30°C 棉60°C`
+  }
+  if (slug.includes('stain') || slug.includes('污渍')) {
+    const t = txt || ''
+    return `🧴 常见污渍去除：\n${t.includes('油') || !t ? '油渍：洗洁精+温水' : ''}\n${t.includes('咖啡') || !t ? '咖啡/茶：盐水+柠檬汁' : ''}\n${t.includes('血') || !t ? '血渍：冷水+双氧水（勿用热水）' : ''}\n${t.includes('红酒') || !t ? '红酒：盐吸干+牛奶浸泡' : ''}\n${t.includes('墨水') || !t ? '墨水：酒精棉签点涂' : ''}\n马上处理效果最好，干透后用含酶洗衣液`
+  }
+  if (slug.includes('emergency-ice') || slug.includes('first-aid') || slug.includes('急救')) {
+    return `🚨 急救速查：\n120急救 / 110报警 / 119火警\n心脏骤停：立即CPR（按压100-120次/分，深度5-6cm）+ AED\n气道梗阻：海姆立克法\n出血：压迫止血+抬高\n烧伤：冷水冲15分钟，勿涂牙膏\n误食中毒：保留呕吐物样本`
   }
   // 通用兜底：交给真实 AI 执行（POST /api/ai/tool/run）返回 null 标记
   const reversed = txt.split('').reverse().join('')
@@ -462,7 +699,7 @@ function App() {
     setResult('')
     await new Promise(r => setTimeout(r, 300))
     try {
-      const local = runTool(tool, input)
+      const local = runTool(tool, input, lang)
       if (local !== null) {
         setResult(local)
         return

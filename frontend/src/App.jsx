@@ -29,7 +29,7 @@ const I18N = {
     pay_confirm_done: '我已支付完成，立即开通',
     my_reward: '我的推荐',
     friends: '有效朋友',
-    invite_desc: '把工具分享给朋友，好友付费你将获得返现，拉10人终身免费',
+    invite_desc: '好友通过你的链接付费后，你将免费获得全站订阅：1位→1个月，3位→3个月，10位→1年',
     copy_link: '复制邀请链接',
     copied: '已复制',
     close: '关闭',
@@ -37,12 +37,12 @@ const I18N = {
     pain: '解决痛点',
     price_mo: '/月',
     tools_total: '个工具',
-    reward_tiers: '返佣阶梯',
-    tier_1: '1位伙伴 10%',
-    tier_2: '2位伙伴 30%',
-    tier_3: '3位伙伴 50%',
-    tier_5: '5位伙伴 70%',
-    tier_10: '10位伙伴 永久免费',
+    reward_tiers: '邀请奖励',
+    tier_1: '1位伙伴 → 免费1个月',
+    tier_2: '2位伙伴',
+    tier_3: '3位伙伴 → 免费3个月',
+    tier_5: '5位伙伴',
+    tier_10: '10位伙伴 → 免费1年',
     choose_tool: '选择你想用的工具',
     processing: '处理中...',
     result: '结果',
@@ -88,7 +88,7 @@ const I18N = {
     pay_confirm_done: 'I have paid - unlock now',
     my_reward: 'My Rewards',
     friends: 'Friends',
-    invite_desc: 'Share tools with friends. Get cashback when they pay, 10 friends = lifetime free',
+    invite_desc: 'When a friend pays via your link, you get free site-wide access: 1 friend = 1 month, 3 = 3 months, 10 = 1 year',
     copy_link: 'Copy Invite Link',
     copied: 'Copied',
     close: 'Close',
@@ -96,12 +96,12 @@ const I18N = {
     pain: 'Pain point',
     price_mo: '/mo',
     tools_total: 'tools',
-    reward_tiers: 'Reward Tiers',
-    tier_1: '1 friend 10%',
-    tier_2: '2 friends 30%',
-    tier_3: '3 friends 50%',
-    tier_5: '5 friends 70%',
-    tier_10: '10 friends free forever',
+    reward_tiers: 'Rewards',
+    tier_1: '1 friend → 1 month free',
+    tier_2: '2 friends',
+    tier_3: '3 friends → 3 months free',
+    tier_5: '5 friends',
+    tier_10: '10 friends → 1 year free',
     choose_tool: 'Pick a tool to use',
     processing: 'Processing...',
     result: 'Result',
@@ -147,7 +147,7 @@ const I18N = {
     pay_confirm_done: 'لقد دفعت - افتح الآن',
     my_reward: 'مكافآتي',
     friends: 'أصدقاء',
-    invite_desc: 'شارك الأدوات مع أصدقائك، واحصل على استرداد نقدي عند دفعهم، 10 أصدقاء = مجاني للأبد',
+    invite_desc: 'عندما يدفع صديق عبر رابطك تحصل على اشتراك مجاني شامل: صديق واحد = شهر، 3 = 3 أشهر، 10 = سنة',
     copy_link: 'انسخ رابط الدعوة',
     copied: 'تم النسخ',
     close: 'إغلاق',
@@ -156,11 +156,11 @@ const I18N = {
     price_mo: '/شهر',
     tools_total: 'أداة',
     reward_tiers: 'مستويات المكافآت',
-    tier_1: 'صديق واحد 10%',
-    tier_2: 'صديقان 30%',
-    tier_3: '3 أصدقاء 50%',
-    tier_5: '5 أصدقاء 70%',
-    tier_10: '10 أصدقاء مجاني للأبد',
+    tier_1: 'صديق واحد → شهر مجاني',
+    tier_2: 'صديقان',
+    tier_3: '3 أصدقاء → 3 أشهر مجاناً',
+    tier_5: '5 أصدقاء',
+    tier_10: '10 أصدقاء → سنة مجاناً',
     choose_tool: 'اختر أداة للاستخدام',
     processing: 'جارٍ المعالجة...',
     result: 'النتيجة',
@@ -320,6 +320,8 @@ function App() {
   const [payModal, setPayModal] = useState(null)
   const [payAwait, setPayAwait] = useState(null) // { orderId, tool, type } 真实网关等待核验
   const [payChecking, setPayChecking] = useState(false)
+  const [payPlan, setPayPlan] = useState('monthly')
+  const [plans, setPlans] = useState(null) // 双语订阅套餐 { en: {...}, zh: {...} }
   const [toast, setToast] = useState('')
   const [deviceId] = useState(getDeviceId)
   const [referral, setReferral] = useState({})
@@ -409,6 +411,8 @@ function App() {
     try {
       const r = await fetch(`${API}/api/referral?deviceId=${deviceId}`)
       const d = await r.json()
+      const p = await fetch(`${API}/api/pricing`).then(x => x.json()).catch(() => null)
+      if (p && p.plans) setPlans(p.plans)
       setReferral(d)
     } catch (e) { console.error(e) }
   }
@@ -478,12 +482,12 @@ function App() {
     fetchReferral()
   }
 
-  const checkPay = async (orderId, toolId, type) => {
+  const checkPay = async (orderId, toolId, type, plan) => {
     setPayChecking(true)
     try {
       const r = await fetch(`${API}/api/pay/query`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ deviceId, toolId, type, orderId })
+        body: JSON.stringify({ deviceId, toolId, type, orderId, plan })
       })
       const d = await r.json()
       if (d && d.paid) { unlockTool(toolId, type); return true }
@@ -498,20 +502,20 @@ function App() {
     try {
       const r = await fetch(`${API}/api/pay`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ deviceId, toolId: payModal.id, type })
+        body: JSON.stringify({ deviceId, toolId: payModal.id, type, plan: type === 'subscription' ? payPlan : undefined, lang })
       })
       const d = await r.json()
       // 真实支付网关（支付宝等）有 payUrl -> 跳转收银台并轮询核验
       if (d.gateway && d.gateway.live && d.payUrl) {
         const orderId = d.orderId || d.gateway.orderId
         setPayModal(null)
-        setPayAwait({ orderId, toolId: payModal.id, type, toolName: payModal.name?.title })
+        setPayAwait({ orderId, toolId: payModal.id, type, toolName: payModal.name?.title, plan: type === 'subscription' ? payPlan : undefined })
         window.open(d.payUrl, '_blank', 'noopener')
         showToast(t.pay_redirect || '正在打开收银台…')
         // 自动轮询核验（最多 ~9 次，每 6s）
         for (let i = 0; i < 9; i++) {
           await new Promise(res => setTimeout(res, 6000))
-          const done = await checkPay(orderId, payModal.id, type)
+          const done = await checkPay(orderId, payModal.id, type, type === 'subscription' ? payPlan : undefined)
           if (done) return
         }
         showToast(t.pay_manual || '若已完成支付请点击"我已支付"')
@@ -520,7 +524,7 @@ function App() {
       // 演示直付
       await fetch(`${API}/api/pay/confirm`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ deviceId, toolId: payModal.id, type, orderId: d.orderId })
+        body: JSON.stringify({ deviceId, toolId: payModal.id, type, orderId: d.orderId, plan: type === 'subscription' ? payPlan : undefined })
       })
       unlockTool(payModal.id, type)
     } catch (e) { console.error(e) }
@@ -653,9 +657,14 @@ function App() {
           </div>
 
           <div className="progress-card">
-            <div className="progress-label">{t.friends}: <b>{referral.verifiedFriends || 0}</b> / 10</div>
+            <div className="progress-label">{t.friends}: <b>{referral.verifiedFriends || 0}</b> {lang === 'en' ? '/10' : (lang === 'ar' ? '/10' : '/10')}</div>
             <div className="progress-bar">
-              <div className="progress-fill" style={{ width: `${((referral.verifiedFriends || 0) / 10) * 100}%` }} />
+              <div className="progress-fill" style={{ width: `${Math.min(((referral.verifiedFriends || 0) / 10) * 100, 100)}%` }} />
+            </div>
+            <div className="progress-marks">
+              <span className={`mark ${(referral.verifiedFriends || 0) >= 1 ? 'done' : ''}`}>1月</span>
+              <span className={`mark ${(referral.verifiedFriends || 0) >= 3 ? 'done' : ''}`}>3月</span>
+              <span className={`mark ${(referral.verifiedFriends || 0) >= 10 ? 'done' : ''}`}>1年</span>
             </div>
           </div>
 
@@ -683,13 +692,30 @@ function App() {
             <div className="modal-pain">🎯 {payModal.name?.title} — {payModal.name?.pain}</div>
             <div className="pay-options">
               <div className="pay-opt sub">
-                <div className="pay-name">{t.subscribe}</div>
-                <div className="pay-price">¥{payModal.pricing?.monthly}<em>{t.price_mo}</em></div>
-                <button onClick={() => doPay('subscription')}>{t.pay_now}</button>
+                <div className="pay-name">{lang === 'en' ? 'Subscriptions' : '订阅套餐'}</div>
+                {(() => {
+                  const pl = plans && plans[lang === 'en' ? 'en' : 'zh']
+                  const cur = lang === 'en' ? '$' : '¥'
+                  const items = [
+                    ['monthly', pl?.monthly, lang === 'en' ? 'Monthly' : (lang === 'ar' ? 'شهري' : '包月')],
+                    ['quarterly', pl?.quarterly, lang === 'en' ? 'Quarterly' : (lang === 'ar' ? 'ربع سنوي' : '包季')],
+                    ['yearly', pl?.yearly, lang === 'en' ? 'Yearly' : (lang === 'ar' ? 'سنوي' : '包年')]
+                  ]
+                  return <div className="plan-row">
+                    {items.map(([k, price, label]) => (
+                      <button key={k} className={`plan-btn ${payPlan === k ? 'active' : ''}`}
+                        onClick={() => setPayPlan(k)}>
+                        <span className="plan-label">{label}</span>
+                        <span className="plan-price">{cur}{price != null ? price : '—'}</span>
+                      </button>
+                    ))}
+                  </div>
+                })()}
+                <button onClick={() => { setPayType('subscription'); doPay('subscription') }}>{t.pay_now}</button>
               </div>
               <div className="pay-opt life">
                 <div className="pay-name">💎 {t.lifetime}</div>
-                <div className="pay-price">¥{payModal.pricing?.lifetime}<em>{t.lifetime}</em></div>
+                <div className="pay-price">{lang === 'en' ? '$' : '¥'}{payModal.pricing?.lifetime}<em>{t.lifetime}</em></div>
                 <button onClick={() => doPay('lifetime')}>{t.pay_now}</button>
               </div>
             </div>
@@ -706,7 +732,7 @@ function App() {
             <div className="modal-pain">🎯 {payAwait.toolName || ''}</div>
             <button className="sub-btn"
               style={{ width: '100%' }} disabled={payChecking}
-              onClick={() => { window.open('', '_self'); const d = payAwait; checkPay(d.orderId, d.toolId, d.type) }}>
+              onClick={() => { window.open('', '_self'); const d = payAwait; checkPay(d.orderId, d.toolId, d.type, d.plan) }}>
               {payChecking ? (t.processing || '核验中…') : (t.pay_confirm_done || '我已支付完成，立即开通')}
             </button>
             <button className="modal-cancel" onClick={() => setPayAwait(null)}>{t.cancel}</button>

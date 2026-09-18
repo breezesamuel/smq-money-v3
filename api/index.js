@@ -14,141 +14,6 @@ const { loadTools, setCors, json, notFound, badRequest } = require('./lib');
 const { createLiveOrder, paymentProviderStatus } = require('./payments');
 const { track } = require('../report/analytics');
 
-// --- 分钟计费计系统 ---
-// 计费规则：前10分钟免费， thereafter ¥0.2/分钟
-// AI免费加时：每次可免费增加10分钟，每日上限3次，累计时长不计入计费
-// 用户状态存储（内存态，Serverless 重启会清空，真实持久化待接 Supabase/KV）
-const payUsers = new Map(); // deviceId -> { minutesUsed: number, freeMinutes: number, freeDailyCount: number, totalFreeAdded: number }
-
-function getPayUser(deviceId) {
-  let u = payUsers.get(deviceId);
-  if (!u) {
-    u = { minutesUsed: 0, freeMinutes: 10, freeDailyCount: 0, totalFreeAdded: 0 };
-    payUsers.set(deviceId, u);
-  }
-  return u;
-}
-
-// 核心计费：消耗分钟（用于每分钟心跳扣费）
-function consumeMinute(deviceId) {
-  const u = getPayUser(deviceId);
-  // 如果有未消耗的免费分钟，先扣免费分钟
-  if (u.freeMinutes > 0) {
-    u.freeMinutes--;
-    u.minutesUsed++; // 计入总用时（用于计费统计，免费部分不计费）
-    return { kind: 'free', minutesConsumed: 1, remainingFree: u.freeMinutes };
-  }
-  // 否则按 ¥0.2 计费（这里仅记录，实际扣费由 recharge 接口处理）
-  u.minutesUsed++;
-  return { kind: 'paid', minutesConsumed: 1, costCNY: 0.2 };
-}
-
-// 免费增加时长（AI 赠送）
-function addFreeMinutes(deviceId, minutes) {
-  const u = getPayUser(deviceId);
-  // 每次最多 10分钟，每日上限 3次，累计总免费不限制（仅计入 freeDailyCount 计费豁免）
-  if (u.freeDailyCount >= 3) return { added: 0, reason: 'daily limit reached' };
-  u.freeMinutes = Math.min(u.freeMinutes + minutes, 30); // 单次上限 30 分钟防止滥用
-  u.freeDailyCount++;
-  u.totalFreeAdded += minutes;
-  return { added: minutes, reason: 'ok' };
-}
-
-// 接口：GET /api/pay/balance - 查询用户分钟余额
-function handlePayBalance(req, res) {
-  const url = new URL(req.url, 'http://x');
-  const q = Object.fromEntries(url.searchParams);
-  const deviceId = q.deviceId || 'anon';
-  const u = getPayUser(deviceId);
-  // remainingFree：还剩多少免费分钟（用于前端计时器展示）
-  const remainingFree = u.freeMinutes;
-  // totalUsed：已用总分钟数（免费+付费，用于展示）
-  const totalUsed = u.minutesUsed;
-  // 计费统计：已计费分钟数（不包含免费部分）
-  const chargedMinutes = Math.max(0, totalUsed - 10); // 前10分钟免费
-  const chargeAmount = chargedMinutes * 0.2;
-  return res.json({
-    deviceId,
-    freeMinutes: remainingFree,
-    totalMinutes: totalUsed,
-    chargedMinutes,
-    amountCNY: chargeAmount,
-    // 计费规则说明
-    rules: 'free first 10 min, then ¥0.2/min, AI can add 10min free once per day (max 3 times/day)'
-  });
-}
-
-// 接口：POST /api/pay/heartbeat - 心跳扣费（每分钟触发）
-function handlePayHeartbeat(req, res) {
-  const url = new URL(req.url, 'http://x');
-  const q = Object.fromEntries(url.searchParams);
-  const deviceId = q.deviceId || req.body.deviceId || 'anon';
-  const u = getPayUser(deviceId);
-  const result = consumeMinute(deviceId);
-  if (result.kind === 'free') {
-    track('playHeartbeat', { detail: { topGames: { [q.toolId || q.gameId || 'game']: 1 } }, _inc: true });
-    return res.json({ kind: 'free', minutes: 1, freeRemaining: result.remainingFree, totalUsed: u.minutesUsed });
-  }
-  track('playPaid', { detail: { topGames: { [q.toolId || q.gameId || 'game']: 1 } }, _inc: true });
-  return res.json({ kind: 'paid', minutes: 1, costCNY: result.costCNY, remainingFree: 0, totalUsed: u.minutesUsed });
-}
-
-// 接口：POST /api/pay/recharge - 充值包购买
-// 预设方案：m10:10元/10分钟, m30:30元/30分钟, m100:100元/120分钟, y99:99元/永久, y299:299元/永久, y999:999元/永久
-function handlePayRecharge(req, res) {
-  const url = new URL(req.url, 'http://x');
-  const q = Object.fromEntries(url.searchParams);
-  const deviceId = q.deviceId || req.body.deviceId || 'anon';
-  const plan = q.plan || req.body.plan; // 如 m10, m30, y99 等
-  const plans = {
-    m10: { minutes: 10, priceCNY: 10, desc: '10分钟补时￥10' },
-    m30: { minutes: 30, priceCNY: 30, desc: '30分钟补时￥30' },
-    y99: { minutes: -1, priceCNY: 99, desc: '永久会员￥99' }, // 永久标记
-    y299: { minutes: -1, priceCNY: 299, desc: '永久会员￥299' },
-    y999: { minutes: -1, priceCNY: 999, desc: '永久会员终身￥999' }
-  };
-  const p = plans[plan];
-  if (!p) return badRequest(res, 'invalid plan');
-  // 这里仅记录充值，真实支付请对接支付宝/微信/etc
-  // 模拟充值成功：赋予对应分钟数（永久方案 minutes=-1 表示永久）
-  const u = getPayUser(deviceId);
-  if (p.minutes === -1) {
-    // 永久会员：免费分钟无限制，计入 total minutes 但不扣费
-    u.minutesUsed = Number.MAX_SAFE_INTEGER; // 标记永久
-    track('recharge', { detail: { plans: { [plan]: 1 } }, amount: p.priceCNY });
-    return res.json({ kind: 'recharge', plan, minutes: -1, priceCNY: p.priceCNY, status: 'permanent', message: '永久会员开通成功' });
-  } else {
-    u.minutesUsed += p.minutes;
-    track('recharge', { detail: { plans: { [plan]: 1 } }, amount: p.priceCNY });
-    return res.json({ kind: 'recharge', plan, minutes: p.minutes, priceCNY: p.priceCNY, status: 'added', remainingFree: u.freeMinutes });
-  }
-}
-
-// 接口：POST /api/pay/invite - 邀请奖励
-// 邀请人奖励：成功邀请 1 位好友，双方各得 10 分钟免费时长
-function handlePayInvite(req, res) {
-  const url = new URL(req.url, 'http://x');
-  const q = Object.fromEntries(url.searchParams);
-const deviceId = q.deviceId || 'anon';
-      const inviterId = q.inviterId || undefined;
-      const u = getPayUser(deviceId);
-      track('invite');
-  // 邀请对象免费 +10 分钟
-  const resInvitee = addFreeMinutes(deviceId, 10);
-  let freeMinutesInviter = 0;
-  let inviterReason = 'no inviter';
-  if (inviterId) {
-    const inviter = getPayUser(inviterId);
-    const resInviter = addFreeMinutes(inviterId, 10);
-    freeMinutesInviter = resInviter.added;
-    inviterReason = 'ok';
-  }
-  return res.json({
-    invitee: { deviceId, freeMinutesAdded: resInvitee.added, freeRemaining: u.freeMinutes },
-    inviter: { freeMinutesAdded: freeMinutesInviter, reason: inviterReason }
-  });
-}
-
 let aiApp = null;
 function getAiApp() {
   if (!aiApp) aiApp = require('../ai-server');
@@ -213,31 +78,63 @@ function toolPrice(toolId, data, type) {
   return type === 'lifetime' ? t.pricing.lifetime : t.pricing.monthly;
 }
 
+// --- 订阅套餐（双语）。用户要求：英文 $9.9/月, $25/季, $99/年；中文 ¥60/月, ¥150/季, ¥500/年 ---
+function subscriptionPlans() {
+  return {
+    en: { monthly: 9.9, quarterly: 25, yearly: 99, currency: 'USD' },
+    zh: { monthly: 60, quarterly: 150, yearly: 500, currency: 'CNY' }
+  };
+}
+
+// plan -> 赠送免费月数（用于购买订阅后开通全站）
+const PLAN_MONTHS = { monthly: 1, quarterly: 3, yearly: 12 };
+
 // 授权开通（支付确认/query 共用）：计入 license、计提 5% 推广费、返佣给邀请人
-function grantAccess(deviceId, toolId, type, { source = 'pay', tools = [] } = {}) {
+// 订阅类型同时按 PLAN_MONTHS 延长全站订阅到期时间（subscriptionUntil）
+function grantAccess(deviceId, toolId, type, { source = 'pay', tools = [], plan } = {}) {
   const u = findUser(deviceId);
   const t = tools.find(x => x.id === toolId);
   if (!t) return { ok: false, error: '工具不存在' };
-  if (u.tools[toolId]) return { ok: true, already: true, license: u.tools[toolId] };
-  u.tools[toolId] = type === 'lifetime' ? 'lifetime' : 'subscription';
-  track('payConfirm', { amount: type === 'lifetime' ? t.pricing.lifetime : t.pricing.monthly, source });
+  let license = null;
+  if (type === 'lifetime') license = 'lifetime';
+  else {
+    license = 'subscription';
+    // 订阅 -> 全站解锁：延长 subscriptionsUntil（月/季/年对应 1/3/12 个月）
+    const months = PLAN_MONTHS[plan] || 1;
+    const base = new Date(u.subscriptionUntil || Date.now()).getTime();
+    u.subscriptionUntil = new Date(base + months * 30 * 24 * 3600 * 1000).toISOString();
+    persistUser(u);
+  }
+  if (!u.tools[toolId]) u.tools[toolId] = license;
+  track('payConfirm', { amount: type === 'lifetime' ? t.pricing.lifetime : (plan ? PLAN_MONTHS[plan] : 1) * t.pricing.monthly, source, plan: plan || null });
   // 收入计提 5% 进推广费基金（自主投放预算）
   try {
     const { accrue } = require('../promo/fund');
-    accrue(type === 'lifetime' ? t.pricing.lifetime : t.pricing.monthly, { ref: deviceId + '/' + toolId });
+    const amount = type === 'lifetime' ? t.pricing.lifetime : (plan ? PLAN_MONTHS[plan] : 1) * t.pricing.monthly;
+    accrue(amount, { ref: deviceId + '/' + toolId });
   } catch (e) { /* fund 未配置时忽略 */ }
 
-  // 返佣：被邀请者首次有效付费 -> 邀请人等级+1
+  // 返佣：被邀请者首次有效付费 -> 邀请人朋友数+1；按朋友数发放订阅月数奖励
+  //   1位 -> +1月 / 3位 -> +3月 / 10位 -> +1年（累计已达到更高档则补足差额）
   if (u.referredBy && !u._bonusGiven) {
     let inviter = null;
     memoUsers.forEach(v => { if (v.referralCode === u.referredBy) inviter = v; });
     if (inviter) {
       const n = inviter.verifiedFriends || 0;
+      const newN = n + 1;
       const ratio = n < 1 ? 0.10 : n < 2 ? 0.30 : n < 3 ? 0.50 : n < 5 ? 0.70 : 1.00;
-      const paid = type === 'lifetime' ? t.pricing.lifetime : t.pricing.monthly;
-      inviter.verifiedFriends = n + 1;
+      const paid = type === 'lifetime' ? t.pricing.lifetime : (plan ? PLAN_MONTHS[plan] : 1) * t.pricing.monthly;
+      inviter.verifiedFriends = newN;
       inviter.bonusGiven = (inviter.bonusGiven || 0) + paid * ratio;
-      track('referralBonus', { amount: paid * ratio });
+      // 订阅月数奖励
+      const monthsFor = f => f >= 10 ? 12 : f >= 3 ? 3 : f >= 1 ? 1 : 0;
+      const prevMonths = monthsFor(n);
+      const nowMonths = monthsFor(newN);
+      if (nowMonths > prevMonths) {
+        const base = new Date(inviter.subscriptionUntil || Date.now()).getTime();
+        inviter.subscriptionUntil = new Date(base + (nowMonths - prevMonths) * 30 * 24 * 3600 * 1000).toISOString();
+      }
+      track('referralBonus', { amount: paid * ratio, friends: newN });
       u._bonusGiven = true;
       if (inviter.verifiedFriends >= 10) inviter.freePermanent = true;
       persistUser(inviter);
@@ -252,6 +149,10 @@ function checkOne(deviceId, toolId, tool, data) {
   const u = findUser(deviceId);
   const used = u.usage[toolId] || 0;
   const license = u.tools[toolId];
+  // 全站订阅未到期 -> 该工具直接解锁
+  if (u.subscriptionUntil && Date.now() < new Date(u.subscriptionUntil).getTime()) {
+    return { allowed: true, reason: 'subscriber', remaining: Infinity, subscriptionUntil: u.subscriptionUntil };
+  }
   if (u.freePermanent) return { allowed: true, reason: 'free_permanent', remaining: Infinity };
   if (license === 'lifetime' || license === 'subscription') return { allowed: true, reason: license, remaining: Infinity };
   if (used < freeUses) return { allowed: true, reason: 'free_trial', remaining: freeUses - used };
@@ -337,7 +238,9 @@ module.exports = async (req, res) => {
   }
 
   // GET /api/pricing
-  if (p[0] === 'pricing' && req.method === 'GET') return json(res, data.pricingRules);
+  if (p[0] === 'pricing' && req.method === 'GET') {
+    return json(res, { ...data.pricingRules, plans: subscriptionPlans() });
+  }
 
   // GET /api/referral?deviceId=
   if (p[0] === 'referral' && req.method === 'GET') {
@@ -345,8 +248,9 @@ module.exports = async (req, res) => {
     return json(res, {
       referralCode: u.referralCode, verifiedFriends: u.verifiedFriends,
       tiers: data.pricingRules.referral,
-      bonusEarned: Math.round(u.bonusGiven || 0 * 100) / 100,
-      freePermanent: !!u.freePermanent
+      bonusEarned: Math.round((u.bonusGiven || 0) * 100) / 100,
+      freePermanent: !!u.freePermanent,
+      subscriptionUntil: u.subscriptionUntil || null
     });
   }
 
@@ -430,26 +334,6 @@ module.exports = async (req, res) => {
     return json(res, paymentProviderStatus());
   }
 
-  // GET /api/pay/balance - 查询用户分钟余额
-  if (p[0] === 'pay' && p[1] === 'balance') {
-    return handlePayBalance(req, res);
-  }
-
-  // POST /api/pay/heartbeat - 心跳扣费
-  if (p[0] === 'pay' && p[1] === 'heartbeat' && req.method === 'POST') {
-    return handlePayHeartbeat(req, res);
-  }
-
-  // POST /api/pay/recharge - 充值包购买
-  if (p[0] === 'pay' && p[1] === 'recharge' && req.method === 'POST') {
-    return handlePayRecharge(req, res);
-  }
-
-  // POST /api/pay/invite - 邀请奖励
-  if (p[0] === 'pay' && p[1] === 'invite' && req.method === 'POST') {
-    return handlePayInvite(req, res);
-  }
-
   if (req.method !== 'POST') return json(res, { error: 'method not allowed' }, 405);
 
   readBody(req, async body => {
@@ -524,20 +408,32 @@ module.exports = async (req, res) => {
     }
 
     // POST /api/pay 发起支付（真实网关优先，回退演示）
+    // body: { deviceId, toolId, type: subscription|lifetime, plan?: monthly|quarterly|yearly, lang?: en|zh }
     if (p[0] === 'pay' && p.length === 1 && !p[1]) {
       if (!body.toolId) return badRequest(res, '需要 toolId');
       await ensureUser(body.deviceId || 'anon');
       const tool = tools.find(t => t.id === body.toolId);
       if (!tool) return notFound(res, '工具不存在');
       const type = body.type === 'lifetime' ? 'lifetime' : 'subscription';
-      const amount = type === 'lifetime' ? tool.pricing.lifetime : tool.pricing.monthly;
+      const lang = body.lang === 'en' ? 'en' : 'zh';
+      const plans = subscriptionPlans();
+      let amount, plan = body.plan, descSuffix = '';
+      if (type === 'lifetime') {
+        amount = tool.pricing.lifetime;
+        descSuffix = '买断';
+      } else {
+        plan = plan && plans[lang][plan] ? plan : 'monthly';
+        amount = plans[lang][plan];
+        const label = { monthly: lang === 'en' ? 'Monthly' : '包月', quarterly: lang === 'en' ? 'Quarterly' : '包季', yearly: lang === 'en' ? 'Yearly' : '包年' }[plan];
+        descSuffix = label;
+      }
       const orderId = 'pay_' + Date.now().toString(36).toUpperCase();
-      const desc = `开通「${tool.name.zh.title}」${type === 'lifetime' ? '买断' : '包月'}`;
+      const desc = `开通「${tool.name.zh.title}」${descSuffix}`;
       track('payOrder');
 
-      return createLiveOrder({ toolId: tool.id, toolName: desc, amountCNY: amount, type, deviceId: body.deviceId || 'anon' })
+      return createLiveOrder({ toolId: tool.id, toolName: desc, amountCNY: amount, type, deviceId: body.deviceId || 'anon', plan })
         .then(gateway => json(res, {
-          success: true, orderId, toolId: tool.id, type, amount, currency: 'CNY',
+          success: true, orderId, toolId: tool.id, type, plan: plan || null, amount, currency: lang === 'en' ? 'USD' : 'CNY',
           monthly: tool.pricing.monthly, lifetime: tool.pricing.lifetime,
           description: desc,
           gateway,
@@ -547,7 +443,7 @@ module.exports = async (req, res) => {
           demo: !(gateway && gateway.live)
         }))
         .catch(e => json(res, {
-          success: true, orderId, toolId: tool.id, type, amount, currency: 'CNY',
+          success: true, orderId, toolId: tool.id, type, plan: plan || null, amount, currency: lang === 'en' ? 'USD' : 'CNY',
           description: desc, gateway: { live: false, errors: [e.message] },
           payUrl: `/api/pay/confirm?orderId=${orderId}`, demo: true
         }));
@@ -555,8 +451,10 @@ module.exports = async (req, res) => {
 
     // POST /api/pay/confirm 确认支付 -> 开通许可 + 返佣（仅 demo 环境直付；真实收款已配置时必须带已支付订单号）
     if (p[0] === 'pay' && p[1] === 'confirm') {
-      const { deviceId, toolId, type, orderId } = body;
+      const { deviceId, toolId, type, orderId, plan } = body;
       if (!deviceId || !toolId) return badRequest(res, '需要 deviceId/toolId');
+      // 冷启动先从库恢复，避免新建空用户覆盖已存邀请关系/累计
+      await ensureUser(deviceId);
       let alipay = null;
       try { alipay = require('./alipay'); } catch (e) { alipay = null; }
       // 安全：真实收款(支付宝)已配置时，confirm 必须携带已支付订单号，防止绕过支付白嫖授权
@@ -569,15 +467,17 @@ module.exports = async (req, res) => {
           return json(res, { success: false, paid: false, status: status || null, error: '订单未支付' }, 402);
         }
       }
-      const g = grantAccess(deviceId, toolId, type, { source: 'confirm', tools });
+      const g = grantAccess(deviceId, toolId, type, { source: 'confirm', tools, plan });
       if (!g.ok) return notFound(res, g.error);
       return json(res, { success: true, status: 'paid', license: g.license, message: '支付成功已开通' });
     }
 
     // POST /api/pay/query 主动核验订单（支付宝返回收银台后调用）-> 已支付则立即开通
     if (p[0] === 'pay' && p[1] === 'query') {
-      const { deviceId, toolId, type, orderId } = body;
+      const { deviceId, toolId, type, orderId, plan } = body;
       if (!deviceId || !toolId || !orderId) return badRequest(res, '需要 deviceId/toolId/orderId');
+      // 冷启动先从库恢复，避免新建空用户覆盖已存邀请关系/累计
+      await ensureUser(deviceId);
       const u = await ensureUser(deviceId);
       if (u.tools[toolId]) return json(res, { success: true, paid: true, already: true, license: u.tools[toolId] });
       let alipay = null;
@@ -587,7 +487,7 @@ module.exports = async (req, res) => {
       try { q = await alipay.queryTrade(orderId); } catch (e) { q = { ok: false, error: e.message }; }
       const status = q && q.status;
       if (q && q.ok && (status === 'TRADE_SUCCESS' || status === 'TRADE_FINISHED')) {
-        const g = grantAccess(deviceId, toolId, type || 'subscription', { source: 'query', tools });
+        const g = grantAccess(deviceId, toolId, type || 'subscription', { source: 'query', tools, plan });
         return json(res, { success: true, paid: true, status, license: g && g.license, message: '支付核验成功已开通' });
       }
       return json(res, { success: true, paid: false, status: status || null, reason: q && q.error || 'pending' });
@@ -600,4 +500,3 @@ module.exports = async (req, res) => {
 module.exports.checkOne = checkOne;
 module.exports.findUser = findUser;
 module.exports.memoUsers = memoUsers;
-module.exports.payUsers = payUsers;

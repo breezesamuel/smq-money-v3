@@ -188,6 +188,38 @@ function toolPrice(toolId, data, type) {
   return type === 'lifetime' ? t.pricing.lifetime : t.pricing.monthly;
 }
 
+// 授权开通（支付确认/query 共用）：计入 license、计提 5% 推广费、返佣给邀请人
+function grantAccess(deviceId, toolId, type, { source = 'pay', tools = [] } = {}) {
+  const u = findUser(deviceId);
+  const t = tools.find(x => x.id === toolId);
+  if (!t) return { ok: false, error: '工具不存在' };
+  if (u.tools[toolId]) return { ok: true, already: true, license: u.tools[toolId] };
+  u.tools[toolId] = type === 'lifetime' ? 'lifetime' : 'subscription';
+  track('payConfirm', { amount: type === 'lifetime' ? t.pricing.lifetime : t.pricing.monthly, source });
+  // 收入计提 5% 进推广费基金（自主投放预算）
+  try {
+    const { accrue } = require('../promo/fund');
+    accrue(type === 'lifetime' ? t.pricing.lifetime : t.pricing.monthly, { ref: deviceId + '/' + toolId });
+  } catch (e) { /* fund 未配置时忽略 */ }
+
+  // 返佣：被邀请者首次有效付费 -> 邀请人等级+1
+  if (u.referredBy && !u._bonusGiven) {
+    let inviter = null;
+    memoUsers.forEach(v => { if (v.referralCode === u.referredBy) inviter = v; });
+    if (inviter) {
+      const n = inviter.verifiedFriends || 0;
+      const ratio = n < 1 ? 0.10 : n < 2 ? 0.30 : n < 3 ? 0.50 : n < 5 ? 0.70 : 1.00;
+      const paid = type === 'lifetime' ? t.pricing.lifetime : t.pricing.monthly;
+      inviter.verifiedFriends = n + 1;
+      inviter.bonusGiven = (inviter.bonusGiven || 0) + paid * ratio;
+      track('referralBonus', { amount: paid * ratio });
+      u._bonusGiven = true;
+      if (inviter.verifiedFriends >= 10) inviter.freePermanent = true;
+    }
+  }
+  return { ok: true, license: u.tools[toolId] };
+}
+
 function checkOne(deviceId, toolId, tool, data) {
   const freeUses = tool.pricing.freeUses || 10;
   const u = findUser(deviceId);
@@ -203,7 +235,7 @@ function checkOne(deviceId, toolId, tool, data) {
   };
 }
 
-module.exports = (req, res) => {
+module.exports = async (req, res) => {
   setCors(res);
   if (req.method === 'OPTIONS') return res.status(200).end();
 
@@ -236,15 +268,9 @@ module.exports = (req, res) => {
         let pb = {};
         try { pb = JSON.parse(passback); } catch (e) {}
         if (ok && tradeStatus === 'TRADE_SUCCESS') {
-          const u = findUser(pb.deviceId || 'anon');
-          const t = tools.find(x => x.id === pb.toolId);
-          if (t) {
-            u.tools[pb.toolId] = pb.type === 'lifetime' ? 'lifetime' : 'subscription';
+          if (pb.deviceId && pb.toolId) {
             track('alipayNotify', { amount: Number(params.total_amount || 0) });
-            try {
-              const { accrue } = require('../promo/fund');
-              accrue(Number(params.total_amount || 0), { ref: 'alipay/' + params.trade_no });
-            } catch (e) {}
+            grantAccess(pb.deviceId, pb.toolId, pb.type === 'lifetime' ? 'lifetime' : 'subscription', { source: 'alipay-notify', tools });
           }
           res.setHeader('Content-Type', 'text/plain');
           res.status(200).end('success');
@@ -397,7 +423,7 @@ module.exports = (req, res) => {
 
   if (req.method !== 'POST') return json(res, { error: 'method not allowed' }, 405);
 
-  readBody(req, body => {
+  readBody(req, async body => {
     if (!body) return badRequest(res, 'JSON body 无效');
 
     // POST /api/feedback 用户反馈收集
@@ -495,38 +521,32 @@ module.exports = (req, res) => {
         }));
     }
 
-    // POST /api/pay/confirm 确认支付 -> 开通许可 + 返佣
+    // POST /api/pay/confirm 确认支付 -> 开通许可 + 返佣（demo/回调直付用）
     if (p[0] === 'pay' && p[1] === 'confirm') {
       const { deviceId, toolId, type } = body;
       if (!deviceId || !toolId) return badRequest(res, '需要 deviceId/toolId');
-      const u = findUser(deviceId);
-      const t = tools.find(x => x.id === toolId);
-      if (!t) return notFound(res, '工具不存在');
-      u.tools[toolId] = type === 'lifetime' ? 'lifetime' : 'subscription';
-      track('payConfirm');
-      // 收入计提 5% 进推广费基金（自主投放预算）
-      try {
-        const { accrue } = require('../promo/fund');
-        const paidAmt = type === 'lifetime' ? t.pricing.lifetime : t.pricing.monthly;
-        accrue(paidAmt, { ref: deviceId + '/' + toolId });
-      } catch (e) { /* fund 未配置时忽略 */ }
+      const g = grantAccess(deviceId, toolId, type, { source: 'confirm', tools });
+      if (!g.ok) return notFound(res, g.error);
+      return json(res, { success: true, status: 'paid', license: g.license, message: '支付成功已开通' });
+    }
 
-      // 返佣：被邀请者首次有效付费 -> 邀请人等级+1
-      if (u.referredBy && !u._bonusGiven) {
-        let inviter = null;
-        memoUsers.forEach(v => { if (v.referralCode === u.referredBy) inviter = v; });
-        if (inviter) {
-          const n = inviter.verifiedFriends || 0;
-          const ratio = n < 1 ? 0.10 : n < 2 ? 0.30 : n < 3 ? 0.50 : n < 5 ? 0.70 : 1.00;
-          const paid = type === 'lifetime' ? t.pricing.lifetime : t.pricing.monthly;
-          inviter.verifiedFriends = n + 1;
-          inviter.bonusGiven = (inviter.bonusGiven || 0) + paid * ratio;
-          track('referralBonus', { amount: paid * ratio });
-          u._bonusGiven = true;
-          if (inviter.verifiedFriends >= 10) inviter.freePermanent = true;
-        }
+    // POST /api/pay/query 主动核验订单（支付宝返回收银台后调用）-> 已支付则立即开通
+    if (p[0] === 'pay' && p[1] === 'query') {
+      const { deviceId, toolId, type, orderId } = body;
+      if (!deviceId || !toolId || !orderId) return badRequest(res, '需要 deviceId/toolId/orderId');
+      const u = findUser(deviceId);
+      if (u.tools[toolId]) return json(res, { success: true, paid: true, already: true, license: u.tools[toolId] });
+      let alipay = null;
+      try { alipay = require('./alipay'); } catch (e) { alipay = null; }
+      if (!alipay || !alipay.ready()) return json(res, { success: true, paid: false, reason: 'alipay-unavailable' });
+      let q = null;
+      try { q = await alipay.queryTrade(orderId); } catch (e) { q = { ok: false, error: e.message }; }
+      const status = q && q.status;
+      if (q && q.ok && (status === 'TRADE_SUCCESS' || status === 'TRADE_FINISHED')) {
+        const g = grantAccess(deviceId, toolId, type || 'subscription', { source: 'query', tools });
+        return json(res, { success: true, paid: true, status, license: g && g.license, message: '支付核验成功已开通' });
       }
-      return json(res, { success: true, status: 'paid', license: u.tools[toolId], message: '支付成功已开通' });
+      return json(res, { success: true, paid: false, status: status || null, reason: q && q.error || 'pending' });
     }
 
     return notFound(res, 'Unknown POST endpoint');

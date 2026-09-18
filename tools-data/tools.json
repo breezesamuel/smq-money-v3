@@ -16170,14 +16170,270 @@
      "desc": "يوصي بأنشطة مناسبة للعمر بناءً على الاهتمامات"
     }
    }
+  },
+  {
+   "id": "g1279",
+   "slug": "leftover-reviver",
+   "category": "life",
+   "type": "utility",
+   "pricing": {
+    "freeUses": 10,
+    "monthly": 10,
+    "lifetime": 99,
+    "currency": "CNY"
+   },
+   "name": {
+    "zh": {
+     "title": "剩菜重生器",
+     "pain": "剩菜不知如何处理",
+     "category": "生活痛点",
+     "desc": "AI帮你创意改造剩菜食谱"
+    },
+    "en": {
+     "title": "Leftover Reviver",
+     "pain": "Don't know what to do with leftovers",
+     "category": "Life Hacks",
+     "desc": "AI transforms leftovers into creative recipes"
+    },
+    "ar": {
+     "title": "مُحيط الطعام",
+     "pain": "لا تعرف ماذا تفعل بالبقايا",
+     "category": "حيل الحياة",
+     "desc": "يحول الذكاء الاصطناعي البقايا إلى أطباق مبتكرة"
+    }
+   }
+  },
+  {
+   "id": "g1286",
+   "slug": "smart-shopping-assistant",
+   "category": "life",
+   "type": "utility",
+   "pricing": {
+    "freeUses": 10,
+    "monthly": 10,
+    "lifetime": 99,
+    "currency": "CNY"
+   },
+   "name": {
+    "zh": {
+     "title": "智能省钱购物",
+     "pain": "购物时想省钱但不知如何",
+     "category": "生活痛点",
+     "desc": "分析比价并推荐最佳购买时机"
+    },
+    "en": {
+     "title": "Smart Shopping Assistant",
+     "pain": "Want to save money but don't know how",
+     "category": "Life Hacks",
+     "desc": "Analyzes prices and suggests best buying times"
+    },
+    "ar": {
+     "title": "مساعد التسوق الذكي",
+     "pain": "تريد توفير المال ولكنك لا تعرف كيف",
+     "category": "حيل الحياة",
+     "desc": "يحلل الأسعار ويقترح أفضل الأوقات للشراء"
+    }
+   }
+  },
+  {
+   "id": "g1288",
+   "slug": "health-symptom-checker",
+   "category": "life",
+   "type": "utility",
+   "pricing": {
+    "freeUses": 10,
+    "monthly": 10,
+    "lifetime": 99,
+    "currency": "CNY"
+   },
+   "name": {
+    "zh": {
+     "title": "症状自查助手",
+     "pain": "身体不适不知该看什么科",
+     "category": "生活痛点",
+     "desc": "根据症状推荐就医科室和注意事项"
+    },
+    "en": {
+     "title": "Symptom Checker",
+     "pain": "Don't know which doctor to see",
+     "category": "Life Hacks",
+     "desc": "Recommends doctor visits based on symptoms"
+    },
+    "ar": {
+     "title": "فحص الأعراض",
+     "pain": "لا تعرف أي طبيب يجب أن تراه",
+     "category": "حيل الحياة",
+     "desc": "يقترح زيارة الأطباء بناءً على الأعراض"
+    }
+   }
+  },
+  {
+   "id": "g1290",
+   "slug": "cleaning-optimizer",
+   "category": "life",
+   "type": "utility",
+   "pricing": {
+    "freeUses": 10,
+    "monthly": 10,
+    "lifetime": 99,
+    "currency": "CNY"
+   },
+   "name": {
+    "zh": {
+     "title": "清洁优化师",
+     "pain": "家务耗时效率低",
+     "category": "生活痛点",
+     "desc": "AI规划最高效清洁路线和任务"
+    },
+    "en": {
+     "title": "Cleaning Optimizer",
+     "pain": "Housework takes too long",
+     "category": "Life Hacks",
+     "desc": "AI plans most efficient cleaning routes"
+    },
+    "ar": {
+     "title": "مُحسِّن التنظيف",
+     "pain": "العمل المنزلي يستغرق وقتاً طويلاً",
+     "category": "حيل الحياة",
+     "desc": "يخطط الذكاء الاصطناعي لأكثر مسارات التنظيف كفاءة"
+    }
+   }
+  },
+  {
+   "id": "g1293",
+   "slug": "route-planner",
+   "category": "life",
+   "type": "utility",
+   "pricing": {
+    "freeUses": 10,
+    "monthly": 10,
+    "lifetime": 99,
+    "currency": "CNY"
+   },
+   "name": {
+    "zh": {
+     "title": "智能路线规划",
+     "pain": "出行路线总是拥堵",
+     "category": "生活痛点",
+     "desc": "实时避开拥堵并推荐最佳出行时间"
+    },
+    "en": {
+     "title": "Smart Route Planner",
+     "pain": "Travel routes are always congested",
+     "category": "Life Hacks",
+     "desc": "Avoids traffic and suggests best travel times"
+    },
+    "ar": {
+     "title": "مخطط المسارات الذكي",
+     "pain": "مسارات السفر مزدحمة دائماً",
+     "category": "حيل الحياة",
+     "desc": "يتجنب الازدحام ويقترح أفضل أوقات السفر"
+    }
+   }
+  },
+  {
+   "id": "g1302",
+   "slug": "parenting-tip-generator",
+   "category": "life",
+   "type": "utility",
+   "pricing": {
+    "freeUses": 10,
+    "monthly": 10,
+    "lifetime": 99,
+    "currency": "CNY"
+   },
+   "name": {
+    "zh": {
+     "title": "育儿锦囊",
+     "pain": "育儿方法不确定",
+     "category": "生活痛点",
+     "desc": "根据孩子情况提供个性化育儿建议"
+    },
+    "en": {
+     "title": "Parenting Tips",
+     "pain": "Uncertain about parenting methods",
+     "category": "Life Hacks",
+     "desc": "Provides personalized parenting advice"
+    },
+    "ar": {
+     "title": "نصائح التربية",
+     "pain": "غير متأكد من طرق التربية",
+     "category": "حيل الحياة",
+     "desc": "يوفر نصائح تربية مخصصة بناءً على طفلك"
+    }
+   }
+  },
+  {
+   "id": "g1323",
+   "slug": "meal-planner",
+   "category": "life",
+   "type": "utility",
+   "pricing": {
+    "freeUses": 10,
+    "monthly": 10,
+    "lifetime": 99,
+    "currency": "CNY"
+   },
+   "name": {
+    "zh": {
+     "title": "智能膳食规划",
+     "pain": "每天纠结吃什么",
+     "category": "生活痛点",
+     "desc": "根据营养需求自动规划一周菜单"
+    },
+    "en": {
+     "title": "Meal Planner",
+     "pain": "Struggle with what to eat daily",
+     "category": "Life Hacks",
+     "desc": "Automatically plans weekly menus based on nutrition"
+    },
+    "ar": {
+     "title": "مخطط الوجبات",
+     "pain": "تعاني من ماذا تأكل يومياً",
+     "category": "حيل الحياة",
+     "desc": "يخطط قائمة أسبوعية تلقائياً بناءً على التغذية"
+    }
+   }
+  },
+  {
+   "id": "g1330",
+   "slug": "meeting-summary-ai",
+   "category": "worker",
+   "type": "utility",
+   "pricing": {
+    "freeUses": 10,
+    "monthly": 10,
+    "lifetime": 99,
+    "currency": "CNY"
+   },
+   "name": {
+    "zh": {
+     "title": "会议纪要生成",
+     "pain": "会议记录繁琐耗时",
+     "category": "打工人",
+     "desc": "AI自动提取会议重点，生成结构化纪要"
+    },
+    "en": {
+     "title": "Meeting Summary AI",
+     "pain": "Meeting notes time-consuming",
+     "category": "Workplace Power",
+     "desc": "AI extracts key points, creates structured summaries"
+    },
+    "ar": {
+     "title": "ملخص الاجتماع",
+     "pain": "تدوين الاجتماعات يستغرق وقتا",
+     "category": "أدوات العمل",
+     "desc": "يستخرج النقاط الرئيسية وينشئ ملخصات منظمة"
+    }
+   }
   }
  ],
  "stats": {
-  "total": 504,
+  "total": 512,
   "byCategory": {
    "ai_games": 169,
-   "life": 172,
-   "worker": 163
+   "life": 179,
+   "worker": 164
   }
  }
 }

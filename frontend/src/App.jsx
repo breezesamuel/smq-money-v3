@@ -21,6 +21,12 @@ const I18N = {
     pay_now: '立即支付',
     cancel: '取消',
     success_paid: '支付成功，已开通',
+    pay_redirect: '正在打开收银台…',
+    pay_pending: '支付核验中，请稍候…',
+    pay_manual: '若已支付还未开通，请点击"我已支付完成"',
+    pay_await_title: '等待支付确认',
+    pay_await_desc: '请在打开的收银台完成付款，完成后点下方按钮核验开通。',
+    pay_confirm_done: '我已支付完成，立即开通',
     my_reward: '我的推荐',
     friends: '有效朋友',
     invite_desc: '把工具分享给朋友，好友付费你将获得返现，拉10人终身免费',
@@ -74,6 +80,12 @@ const I18N = {
     pay_now: 'Pay Now',
     cancel: 'Cancel',
     success_paid: 'Payment success, unlocked',
+    pay_redirect: 'Opening payment window…',
+    pay_pending: 'Verifying payment, please wait…',
+    pay_manual: 'If paid but not unlocked, tap "I have paid"',
+    pay_await_title: 'Waiting for payment confirmation',
+    pay_await_desc: 'Complete payment in the opened window, then tap the button below to verify.',
+    pay_confirm_done: 'I have paid - unlock now',
     my_reward: 'My Rewards',
     friends: 'Friends',
     invite_desc: 'Share tools with friends. Get cashback when they pay, 10 friends = lifetime free',
@@ -127,6 +139,12 @@ const I18N = {
     pay_now: 'ادفع الآن',
     cancel: 'إلغاء',
     success_paid: 'تم الدفع بنجاح، تم فتح الأداة',
+    pay_redirect: 'جارٍ فتح نافذة الدفع…',
+    pay_pending: 'جارٍ التحقق من الدفع، يرجى الانتظار…',
+    pay_manual: 'إذا دفعت ولم تُفتح الأداة، اضغط "لقد دفعت"',
+    pay_await_title: 'في انتظار تأكيد الدفع',
+    pay_await_desc: 'أكمل الدفع في النافذة المفتوحة ثم اضغط الزر أدناه للتحقق.',
+    pay_confirm_done: 'لقد دفعت - افتح الآن',
     my_reward: 'مكافآتي',
     friends: 'أصدقاء',
     invite_desc: 'شارك الأدوات مع أصدقائك، واحصل على استرداد نقدي عند دفعهم، 10 أصدقاء = مجاني للأبد',
@@ -300,6 +318,8 @@ function App() {
   const [processing, setProcessing] = useState(false)
   const [usage, setUsage] = useState({})
   const [payModal, setPayModal] = useState(null)
+  const [payAwait, setPayAwait] = useState(null) // { orderId, tool, type } 真实网关等待核验
+  const [payChecking, setPayChecking] = useState(false)
   const [toast, setToast] = useState('')
   const [deviceId] = useState(getDeviceId)
   const [referral, setReferral] = useState({})
@@ -450,6 +470,29 @@ function App() {
     } catch (e) { console.error(e) }
   }
 
+  const unlockTool = (id, type) => {
+    setAlwaysEnabled(prev => new Set([...prev, id]))
+    setUsage(prev => ({ ...prev, [id]: { allowed: true, reason: type, remaining: Infinity } }))
+    setPayModal(null); setPayAwait(null); setPayChecking(false)
+    showToast(t.success_paid)
+    fetchReferral()
+  }
+
+  const checkPay = async (orderId, toolId, type) => {
+    setPayChecking(true)
+    try {
+      const r = await fetch(`${API}/api/pay/query`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ deviceId, toolId, type, orderId })
+      })
+      const d = await r.json()
+      if (d && d.paid) { unlockTool(toolId, type); return true }
+      showToast(t.pay_pending || '支付尚未到账，将自动重试…')
+      return false
+    } catch (e) { console.error(e); return false }
+    finally { setPayChecking(false) }
+  }
+
   const doPay = async (type) => {
     if (!payModal) return
     try {
@@ -458,11 +501,20 @@ function App() {
         body: JSON.stringify({ deviceId, toolId: payModal.id, type })
       })
       const d = await r.json()
-      // 真实支付网关（支付宝等）有 payUrl -> 跳转收银台；demo 模式则直接确认
+      // 真实支付网关（支付宝等）有 payUrl -> 跳转收银台并轮询核验
       if (d.gateway && d.gateway.live && d.payUrl) {
+        const orderId = d.orderId || d.gateway.orderId
         setPayModal(null)
+        setPayAwait({ orderId, toolId: payModal.id, type, toolName: payModal.name?.title })
         window.open(d.payUrl, '_blank', 'noopener')
         showToast(t.pay_redirect || '正在打开收银台…')
+        // 自动轮询核验（最多 ~9 次，每 6s）
+        for (let i = 0; i < 9; i++) {
+          await new Promise(res => setTimeout(res, 6000))
+          const done = await checkPay(orderId, payModal.id, type)
+          if (done) return
+        }
+        showToast(t.pay_manual || '若已完成支付请点击"我已支付"')
         return
       }
       // 演示直付
@@ -470,11 +522,7 @@ function App() {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ deviceId, toolId: payModal.id, type })
       })
-      setAlwaysEnabled(prev => new Set([...prev, payModal.id]))
-      setUsage(prev => ({ ...prev, [payModal.id]: { allowed: true, reason: type, remaining: Infinity } }))
-      setPayModal(null)
-      showToast(t.success_paid)
-      fetchReferral()
+      unlockTool(payModal.id, type)
     } catch (e) { console.error(e) }
   }
 
@@ -646,6 +694,22 @@ function App() {
               </div>
             </div>
             <button className="modal-cancel" onClick={() => setPayModal(null)}>{t.cancel}</button>
+          </div>
+        </div>
+      )}
+
+      {payAwait && (
+        <div className="modal-overlay" onClick={() => setPayAwait(null)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <h3>💳 {t.pay_await_title || '等待支付确认'}</h3>
+            <p className="modal-desc">{t.pay_await_desc || '请在打开的收银台完成付款，完成后点下方按钮核验开通。'}</p>
+            <div className="modal-pain">🎯 {payAwait.toolName || ''}</div>
+            <button className="sub-btn"
+              style={{ width: '100%' }} disabled={payChecking}
+              onClick={() => { window.open('', '_self'); const d = payAwait; checkPay(d.orderId, d.toolId, d.type) }}>
+              {payChecking ? (t.processing || '核验中…') : (t.pay_confirm_done || '我已支付完成，立即开通')}
+            </button>
+            <button className="modal-cancel" onClick={() => setPayAwait(null)}>{t.cancel}</button>
           </div>
         </div>
       )}

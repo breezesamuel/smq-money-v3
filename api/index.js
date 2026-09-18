@@ -182,6 +182,31 @@ function findUser(deviceId) {
   return u;
 }
 
+// --- 持久化（Supabase kv 表；未配置时纯内存，行为不变）---
+const store = require('./store');
+
+// 冷启动恢复：内存无缓存且已配置 Supabase 时，从库中读取并合入内存
+async function ensureUser(deviceId) {
+  if (memoUsers.has(deviceId)) return memoUsers.get(deviceId);
+  const u = findUser(deviceId);
+  if (store.ready()) {
+    try {
+      const saved = await store.kvGet('user:' + deviceId);
+      if (saved && saved.deviceId === deviceId) {
+        Object.assign(u, saved);
+        memoUsers.set(deviceId, u);
+      }
+    } catch (e) {}
+  }
+  return u;
+}
+
+// 异步写回（fire-and-forget，失败静默）
+function persistUser(u) {
+  if (!u || !u.deviceId) return;
+  store.kvSet('user:' + u.deviceId, u).catch(() => {});
+}
+
 function toolPrice(toolId, data, type) {
   const t = data.tools.find(x => x.id === toolId);
   if (!t) return 0;
@@ -215,8 +240,10 @@ function grantAccess(deviceId, toolId, type, { source = 'pay', tools = [] } = {}
       track('referralBonus', { amount: paid * ratio });
       u._bonusGiven = true;
       if (inviter.verifiedFriends >= 10) inviter.freePermanent = true;
+      persistUser(inviter);
     }
   }
+  persistUser(u);
   return { ok: true, license: u.tools[toolId] };
 }
 
@@ -314,7 +341,7 @@ module.exports = async (req, res) => {
 
   // GET /api/referral?deviceId=
   if (p[0] === 'referral' && req.method === 'GET') {
-    const u = findUser(q.deviceId || 'anon');
+    const u = await ensureUser(q.deviceId || 'anon');
     return json(res, {
       referralCode: u.referralCode, verifiedFriends: u.verifiedFriends,
       tiers: data.pricingRules.referral,
@@ -467,8 +494,8 @@ module.exports = async (req, res) => {
     // POST /api/user 识别/注册
     if (p[0] === 'user') {
       if (!body.deviceId) return badRequest(res, '需要 deviceId');
-      const u = findUser(body.deviceId);
-      if (body.referredBy && !u.referredBy) u.referredBy = body.referredBy;
+      const u = await ensureUser(body.deviceId);
+      if (body.referredBy && !u.referredBy) { u.referredBy = body.referredBy; persistUser(u); }
       track('user');
       return json(res, { success: true, user: { deviceId: u.deviceId, referralCode: u.referralCode, verifiedFriends: u.verifiedFriends, referredBy: u.referredBy } });
     }
@@ -478,6 +505,7 @@ module.exports = async (req, res) => {
       if (!body.toolId) return badRequest(res, '需要 toolId');
       const tool = tools.find(t => t.id === body.toolId);
       if (!tool) return notFound(res, '工具不存在');
+      await ensureUser(body.deviceId || 'anon');
       track('check');
       return json(res, checkOne(body.deviceId || 'anon', body.toolId, tool, data));
     }
@@ -485,16 +513,18 @@ module.exports = async (req, res) => {
     // POST /api/use
     if (p[0] === 'use') {
       if (!body.toolId) return badRequest(res, '需要 toolId');
-      const u = findUser(body.deviceId || 'anon');
+      const u = await ensureUser(body.deviceId || 'anon');
       if (!u.usage[body.toolId]) u.usage[body.toolId] = 0;
       u.usage[body.toolId]++;
       track('use', { detail: { topTools: { [body.toolId]: 1 } } });
+      persistUser(u);
       return json(res, { success: true, used: u.usage[body.toolId] });
     }
 
     // POST /api/pay 发起支付（真实网关优先，回退演示）
     if (p[0] === 'pay' && p.length === 1 && !p[1]) {
       if (!body.toolId) return badRequest(res, '需要 toolId');
+      await ensureUser(body.deviceId || 'anon');
       const tool = tools.find(t => t.id === body.toolId);
       if (!tool) return notFound(res, '工具不存在');
       const type = body.type === 'lifetime' ? 'lifetime' : 'subscription';
@@ -534,7 +564,7 @@ module.exports = async (req, res) => {
     if (p[0] === 'pay' && p[1] === 'query') {
       const { deviceId, toolId, type, orderId } = body;
       if (!deviceId || !toolId || !orderId) return badRequest(res, '需要 deviceId/toolId/orderId');
-      const u = findUser(deviceId);
+      const u = await ensureUser(deviceId);
       if (u.tools[toolId]) return json(res, { success: true, paid: true, already: true, license: u.tools[toolId] });
       let alipay = null;
       try { alipay = require('./alipay'); } catch (e) { alipay = null; }

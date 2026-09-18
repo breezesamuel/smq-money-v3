@@ -89,6 +89,18 @@ create table if not exists public.i18n (
   zh text, en text, ar text
 );
 
+-- KV 键值存储（无状态元数据缓冲：用户授予/用量等轻量状态）
+create table if not exists public.kv (
+  key text primary key,
+  value jsonb,
+  updated_at timestamptz default now()
+);
+
+-- KV 允许 RLS 下服务端（anon key 承载）读写
+alter table public.kv enable row level security;
+drop policy if exists "kv_all" on public.kv;
+create policy "kv_all" on public.kv for all using (true) with check (true);
+
 -- 状态更新触发器：朋友付费后，给邀请者 verified_friends+1, 记录返佣
 create or replace function public.on_payment_verified()
 returns trigger as $$

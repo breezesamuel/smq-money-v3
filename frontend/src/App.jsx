@@ -471,9 +471,10 @@ function App() {
       showToast(t.ai_running || 'AI 正在处理…')
       const r = await fetch(`${API}/api/ai/tool/run`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tool: { slug: tool.slug, name: tool.name }, input, lang })
+        body: JSON.stringify({ tool: { slug: tool.slug, name: tool.name }, toolId: tool.id, input, lang })
       })
       const d = await r.json()
+      if (r.status === 402) { setPayModal(tool); showToast(t.limit_reached || '请先升级'); return }
       if (d && d.success && d.result) setResult(d.result)
       else setResult('⚠️ AI 服务暂不可用，请稍后再试。')
     } catch (e) {

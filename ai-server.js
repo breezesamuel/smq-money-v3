@@ -135,9 +135,23 @@ app.post('/api/ai/brain/think', (req, res) => {
 });
 
 // POST /api/ai/tool/run - 512 小工具真实执行（按工具痛点构造 system prompt）
+const AI_FREE_TOOL_CALLS = process.env.AI_FREE_TOOL_CALLS || 10; // 直连接口免费调用闸（与前端 quota 双轨，防绕过）
+const toolCalls = new Map();
+function checkToolFreeCalls(ip, toolId) {
+  const today = new Date().toISOString().slice(0, 10);
+  const key = `${ip}@${toolId}@${today}`;
+  const cnt = toolCalls.get(key) || 0;
+  if (cnt >= AI_FREE_TOOL_CALLS) return false;
+  toolCalls.set(key, cnt + 1);
+  return true;
+}
 app.post('/api/ai/tool/run', async (req, res) => {
-  const { tool, input, lang } = req.body || {};
+  const { tool, input, lang, toolId } = req.body || {};
   if (!tool || !tool.slug) return res.status(400).json({ error: '需要 tool' });
+  const ip = req.ip || 'unknown';
+  if (!checkToolFreeCalls(ip, toolId || tool.slug)) {
+    return res.status(402).json({ error: '已用完本工具免费次数，请升级订阅', code: 'limit_reached' });
+  }
   const meta = (tool.name && (tool.name[lang] || tool.name.zh || tool.name.en)) || {};
   const fallbackMeta = (tool.name && tool.name.zh) || {};
   const title = meta.title || fallbackMeta.title || tool.slug;

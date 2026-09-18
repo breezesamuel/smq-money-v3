@@ -8,10 +8,14 @@ const memoryDb = {
   referrals: []
 };
 
+// 进程内缓存（Serverless 实例内避免每次请求重读磁盘；部署新版本即新实例，天然刷新）
+let toolsCache = null;
+
 function loadTools() {
+  if (toolsCache) return toolsCache;
   try {
-    const data = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'tools-data', 'tools.json'), 'utf8'));
-    return data;
+    toolsCache = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'tools-data', 'tools.json'), 'utf8'));
+    return toolsCache;
   } catch (e) {
     return { tools: [], stats: { total: 0 }, pricingRules: {} };
   }

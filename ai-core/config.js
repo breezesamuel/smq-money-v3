@@ -31,9 +31,10 @@ const MODEL_REGISTRY = {
     name: '火山引擎',
     kind: 'openai',
     endpoint: 'https://ark.cn-beijing.volces.com/api/v3/chat/completions',
-    model: 'ep-20260911093342-87p27',
+    model: '',
     keyEnv: 'VOLCENGINE_API_KEY',
-    enabled: true
+    disabledReason: '需在控制台创建接入点(ep-*)或开通模型',
+    enabled: false
   },
   kimi: {
     name: 'Kimi (Moonshot)',
@@ -71,9 +72,10 @@ const MODEL_REGISTRY = {
     name: 'NVIDIA',
     kind: 'openai',
     endpoint: 'https://integrate.api.nvidia.com/v1/chat/completions',
-    model: 'deepseek-ai/deepseek-r1',
+    model: '',
     keyEnv: 'NVIDIA_API_KEY',
-    enabled: true
+    disabledReason: '端点已废弃(404/410/403)，需换 endpoint 或换 key',
+    enabled: false
   }
 };
 

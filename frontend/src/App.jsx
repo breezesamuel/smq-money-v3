@@ -520,7 +520,7 @@ function App() {
       // 演示直付
       await fetch(`${API}/api/pay/confirm`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ deviceId, toolId: payModal.id, type })
+        body: JSON.stringify({ deviceId, toolId: payModal.id, type, orderId: d.orderId })
       })
       unlockTool(payModal.id, type)
     } catch (e) { console.error(e) }

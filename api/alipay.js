@@ -17,7 +17,7 @@ const CONFIG = {
   returnUrl: env('ALIPAY_RETURN_URL') || 'https://smq-v3.vercel.app/paid.html'
 };
 
-function ready() { return !!(CONFIG.appId && CONFIG.privateKey); }
+function ready() { return !!((process.env.ALIPAY_APP_ID || '') && (process.env.ALIPAY_PRIVATE_KEY || '')); }
 
 // 字典序排序并串接
 function buildSignContent(params) {

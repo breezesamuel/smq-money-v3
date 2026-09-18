@@ -353,8 +353,10 @@ module.exports = async (req, res) => {
   // GET /api/health
   if (p[0] === 'health') return json(res, { status: 'ok', tools: data.stats.total, time: new Date().toISOString() });
 
-  // GET /api/feedback 反馈列表（管理用）
+  // GET /api/feedback 反馈列表（管理用，需 FEEDBACK_ADMIN_KEY）
   if (p[0] === 'feedback' && p.length === 1 && req.method === 'GET') {
+    const adminKey = process.env.FEEDBACK_ADMIN_KEY || '';
+    if (!adminKey || q.key !== adminKey) return json(res, { error: 'unauthorized' }, 401);
     const { listFeedback } = require('../feedback/feedback-queue');
     return json(res, { items: listFeedback() });
   }
@@ -551,10 +553,22 @@ module.exports = async (req, res) => {
         }));
     }
 
-    // POST /api/pay/confirm 确认支付 -> 开通许可 + 返佣（demo/回调直付用）
+    // POST /api/pay/confirm 确认支付 -> 开通许可 + 返佣（仅 demo 环境直付；真实收款已配置时必须带已支付订单号）
     if (p[0] === 'pay' && p[1] === 'confirm') {
-      const { deviceId, toolId, type } = body;
+      const { deviceId, toolId, type, orderId } = body;
       if (!deviceId || !toolId) return badRequest(res, '需要 deviceId/toolId');
+      let alipay = null;
+      try { alipay = require('./alipay'); } catch (e) { alipay = null; }
+      // 安全：真实收款(支付宝)已配置时，confirm 必须携带已支付订单号，防止绕过支付白嫖授权
+      if (alipay && alipay.ready()) {
+        if (!orderId) return badRequest(res, '真实收款模式需携带 orderId');
+        let q = null;
+        try { q = await alipay.queryTrade(orderId); } catch (e) { q = { ok: false, error: e.message }; }
+        const status = q && q.status;
+        if (!(q && q.ok && (status === 'TRADE_SUCCESS' || status === 'TRADE_FINISHED'))) {
+          return json(res, { success: false, paid: false, status: status || null, error: '订单未支付' }, 402);
+        }
+      }
       const g = grantAccess(deviceId, toolId, type, { source: 'confirm', tools });
       if (!g.ok) return notFound(res, g.error);
       return json(res, { success: true, status: 'paid', license: g.license, message: '支付成功已开通' });

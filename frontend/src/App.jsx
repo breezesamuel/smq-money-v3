@@ -42,7 +42,19 @@ const I18N = {
     result: '结果',
     input_placeholder: '输入内容，点击处理...',
     process: '处理',
-    reset: '重置'
+    reset: '重置',
+    fb_btn: '反馈',
+    fb_title: '说说你的想法',
+    fb_sub: '帮助我们把工具做得更好用',
+    fb_pain: '痛点：还缺一个工具',
+    fb_suggestion: '建议：改进现有功能',
+    fb_bug: '报错：工具不好用',
+    fb_other: '其他',
+    fb_msg_ph: '描述你的问题或需求...',
+    fb_contact_ph: '联系方式（选填，如邮箱）',
+    fb_send: '提交反馈',
+    fb_ok: '收到！我们会尽快优化',
+    fb_empty: '请先填写内容'
   },
   en: {
     brand: 'Pain Point Toolkit',
@@ -83,7 +95,19 @@ const I18N = {
     result: 'Result',
     input_placeholder: 'Type something, click process...',
     process: 'Process',
-    reset: 'Reset'
+    reset: 'Reset',
+    fb_btn: 'Feedback',
+    fb_title: 'Tell us what you think',
+    fb_sub: 'Help us make our tools better',
+    fb_pain: 'Pain: missing a tool',
+    fb_suggestion: 'Suggestion: improve a feature',
+    fb_bug: 'Bug: tool not working',
+    fb_other: 'Other',
+    fb_msg_ph: 'Describe your problem or idea...',
+    fb_contact_ph: 'Contact (optional, e.g. email)',
+    fb_send: 'Submit',
+    fb_ok: 'Got it! We will improve soon',
+    fb_empty: 'Please fill in content first'
   },
   ar: {
     brand: 'صندوق حلول المشاكل',
@@ -124,7 +148,19 @@ const I18N = {
     result: 'النتيجة',
     input_placeholder: 'اكتب شيئاً ثم اضغط معالجة...',
     process: 'معالجة',
-    reset: 'إعادة'
+    reset: 'إعادة',
+    fb_btn: 'ملاحظاتك',
+    fb_title: 'أخبرنا برأيك',
+    fb_sub: 'ساعدنا في جعل الأدوات أفضل',
+    fb_pain: 'مشكلة: أفتقد أداة',
+    fb_suggestion: 'اقتراح: تطوير ميزة',
+    fb_bug: 'خطأ: الأداة لا تعمل',
+    fb_other: 'أخرى',
+    fb_msg_ph: 'صف مشكلتك أو فكرتك...',
+    fb_contact_ph: 'وسيلة تواصل (اختياري)',
+    fb_send: 'إرسال',
+    fb_ok: 'وصلنا! سنحسّن قريباً',
+    fb_empty: 'يرجى كتابة المحتوى أولاً'
   }
 }
 
@@ -268,14 +304,75 @@ function App() {
   const [deviceId] = useState(getDeviceId)
   const [referral, setReferral] = useState({})
   const [alwaysEnabled, setAlwaysEnabled] = useState(new Set())
+  const [fbOpen, setFbOpen] = useState(false)
+  const [fbType, setFbType] = useState('suggestion')
+  const [fbMsg, setFbMsg] = useState('')
+  const [fbContact, setFbContact] = useState('')
+  const [fbSending, setFbSending] = useState(false)
 
   const t = I18N[lang]
+
+  const submitFeedback = async () => {
+    if (!fbMsg.trim()) { showToast(t.fb_empty); return }
+    setFbSending(true)
+    const pageTitle = current?.name?.title || document.title || ''
+    try {
+      await fetch(`${API}/api/feedback`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          page: location.pathname + location.search,
+          pageTitle,
+          lang, type: fbType, contact: fbContact, message: fbMsg
+        })
+      })
+      showToast(t.fb_ok)
+      setFbOpen(false); setFbMsg(''); setFbContact('')
+    } catch (e) {
+      showToast(t.fb_empty)
+    } finally {
+      setFbSending(false)
+    }
+  }
 
   useEffect(() => {
     fetchData()
     fetchReferral()
     // eslint-disable-next-line
   }, [lang])
+
+  // SEO：按视图/工具更新 document.title + canonical + meta
+  useEffect(() => {
+    const base = '痛点工具箱 Pain Toolkit'
+    const SEP = ' | '
+    let title = base + SEP + '300+ 小工具 + 1000+ 街机游戏'
+    let desc = '300+ 在线小工具解决每个具体的小痛点，1000+ 街机小游戏。前10分钟免费，¥0.2/分钟。'
+    let canonical = 'https://smq-v3.vercel.app/'
+
+    if (view === 'tool' && current) {
+      const nm = current.name?.title || ''
+      title = nm + SEP + base
+      desc = current.name?.pain ? `${nm} — ${current.name.pain}. 在线立即使用.` : `${nm} — 在线工具.`
+      canonical = `https://smq-v3.vercel.app/tool/${current.slug || current.id}`
+    } else if (view === 'reward') {
+      title = '我的推荐' + SEP + base
+      canonical = 'https://smq-v3.vercel.app/rewards'
+    }
+
+    document.title = title
+    let mDesc = document.querySelector('meta[name="description"]')
+    if (mDesc) mDesc.setAttribute('content', desc)
+    let oTitle = document.querySelector('meta[property="og:title"]')
+    if (oTitle) oTitle.setAttribute('content', title)
+    let oDesc = document.querySelector('meta[property="og:description"]')
+    if (oDesc) oDesc.setAttribute('content', desc)
+    let linkC = document.querySelector('link[rel="canonical"]')
+    if (!linkC) {
+      linkC = document.createElement('link')
+      linkC.rel = 'canonical'
+      document.head.appendChild(linkC)
+    }
+    linkC.setAttribute('href', canonical)
+  }, [view, current])
 
   const fetchData = async () => {
     try {
@@ -424,6 +521,12 @@ function App() {
             <span className="reward-arrow">›</span>
           </div>
 
+          <div className="arcade-banner" onClick={() => window.location.href = '/arcade/'}>
+            <span>🕹️ 街机游戏中心</span>
+            <span className="arcade-sub">1000+ 小游戏 · 前10分钟免费 · ¥0.2/分钟</span>
+            <span className="reward-arrow">›</span>
+          </div>
+
           <div className="grid">
             {filtered.map(tool => (
               <div key={tool.id} className="tool-card" onClick={() => openTool(tool)}>
@@ -514,6 +617,7 @@ function App() {
 
       <footer className="footer">
         {t.brand} · 300+ {t.tools_total} · 中 / EN / عربي
+        <span className="fb-link" onClick={() => setFbOpen(true)}>· {t.fb_btn}</span>
       </footer>
 
       {payModal && (
@@ -540,6 +644,26 @@ function App() {
       )}
 
       {toast && <div className="toast">{toast}</div>}
+
+      {fbOpen && (
+        <div className="modal-overlay" onClick={() => setFbOpen(false)}>
+          <div className="modal feedback-modal" onClick={e => e.stopPropagation()}>
+            <h3>💬 {t.fb_title}</h3>
+            <p className="modal-desc">{t.fb_sub}</p>
+            <div className="fb-types">
+              {['pain', 'suggestion', 'bug', 'other'].map(k => (
+                <button key={k} className={`fb-type ${fbType === k ? 'active' : ''}`} onClick={() => setFbType(k)}>{t['fb_' + k] || k}</button>
+              ))}
+            </div>
+            <textarea className="fb-input" value={fbMsg} onChange={e => setFbMsg(e.target.value)} placeholder={t.fb_msg_ph} rows="4" />
+            <input className="fb-input" value={fbContact} onChange={e => setFbContact(e.target.value)} placeholder={t.fb_contact_ph} />
+            <button className="process-btn fb-send" onClick={submitFeedback} disabled={fbSending}>
+              {fbSending ? t.processing : t.fb_send}
+            </button>
+            <button className="modal-cancel" onClick={() => setFbOpen(false)}>{t.cancel}</button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

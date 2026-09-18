@@ -7,6 +7,15 @@ smq.db
 *.db
 backup*.json
 state.json
+promo-state.json
+report/daily-ledger.json
+report/weekly-*.md
+monitor/alerts/
+monitor/*.log
+feedback/feedback.json
+leaderboard/leaderboard.json
+promo/releases.json
+daily-release.log
 .vercel
 *.lnk
 

@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>街机游戏中心 Arcade | 1000+ 小游戏 · AI 娱乐中心</title>
+  <meta name="description" content="1000+ 在线街机小游戏，Phaser/Pixi/Three 等 40+ 引擎 × 14 题材，前10分钟免费，¥0.2/分钟。AI 娱乐中心。" />
+  <meta name="keywords" content="街机游戏,在线小游戏,AI娱乐,arcade,Phaser,免费游戏,贪吃蛇,拼图,跑酷" />
+  <link rel="canonical" href="https://smq-v3.vercel.app/arcade/" />
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="街机游戏中心 Arcade" />
+  <meta property="og:description" content="1000+ 在线街机小游戏，前10分钟免费，¥0.2/分钟。" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    :root { --bg: #0f1220; --card: #1a1f33; --accent: #6c8cff; --text: #e6e9ff; --muted: #9aa3c7; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, Segoe UI, Roboto, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+    header { text-align: center; padding: 40px 16px 20px; }
+    header h1 { font-size: 28px; }
+    header p { color: var(--muted); margin-top: 8px; }
+    .search { max-width: 640px; margin: 8px auto 24px; padding: 0 16px; }
+    .search input { width: 100%; padding: 12px 16px; border-radius: 12px; border: 1px solid #2d3450; background: #161a2b; color: var(--text); font-size: 15px; outline: none; }
+    .search input:focus { border-color: var(--accent); }
+    .tabs { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-bottom: 24px; padding: 0 16px; }
+    .tab { padding: 6px 14px; border-radius: 99px; border: 1px solid #2d3450; background: #161a2b; color: var(--muted); cursor: pointer; font-size: 13px; }
+    .tab.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 14px; max-width: 1100px; margin: 0 auto; padding: 0 16px 40px; }
+    .card { background: var(--card); border-radius: 14px; padding: 14px; cursor: pointer; transition: transform .15s, border-color .15s; border: 1px solid #232a44; }
+    .card:hover { transform: translateY(-3px); border-color: var(--accent); }
+    .card .emoji { font-size: 32px; }
+    .card .title { font-weight: 600; font-size: 14px; margin-top: 8px; }
+    .card .pain { color: var(--muted); font-size: 12px; margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .card .meta { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
+    .card .chip { font-size: 11px; padding: 2px 8px; border-radius: 99px; background: #26304f; color: #b9c4ef; }
+    .card .free { background: #16332596; color: #6fdc8c; }
+    footer { text-align: center; color: var(--muted); font-size: 13px; padding: 24px; border-top: 1px solid #1e2438; }
+    footer a { color: var(--accent); text-decoration: none; }
+    .lb-panel { max-width: 960px; margin: 32px auto 0; padding: 0 16px 40px; }
+    .lb-panel h2 { font-size: 18px; margin-bottom: 14px; color: var(--accent); }
+    .lb-table { background: #151a2c; border: 1px solid #232a44; border-radius: 14px; overflow: hidden; }
+    .lb-row { display: grid; grid-template-columns: 48px 1.6fr 1fr 90px 110px; gap: 8px; padding: 10px 16px; font-size: 13px; align-items: center; border-bottom: 1px solid #1e2438; }
+    .lb-row:last-child { border-bottom: 0; }
+    .lb-row.lb-head { background: #1b2140; color: var(--muted); font-weight: 600; }
+    .lb-row.lb-head span:first-child { color: var(--muted); }
+    .lb-row:nth-child(n+3) .lb-score { color: var(--accent); }
+    .lb-empty { padding: 18px; text-align: center; color: var(--muted); font-size: 13px; }
+    .lb-insight { margin-top: 14px; background: #151a2c; border: 1px solid #232a44; border-radius: 14px; padding: 16px; color: #b9c4ef; font-size: 14px; line-height: 1.9; }
+    * { color-scheme: dark; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>🕹️ 街机游戏中心</h1>
+    <p>40+ 引擎 × 14 题材 = 1000+ 小游戏 · 前10分钟免费 · ¥0.2/分钟</p>
+  </header>
+  <div class="search">
+    <input id="q" placeholder="搜索游戏... 如：蛇、拼图、跑酷" />
+  </div>
+  <div class="tabs" id="tabs"></div>
+  <div class="grid" id="grid"></div>
+
+  <div class="lb-panel">
+    <h2>🏆 本周冲榜 Top 50</h2>
+    <div class="lb-table">
+      <div class="lb-row lb-head"><span>#</span><span>游戏</span><span>题材</span><span>玩家数</span><span>最高分</span></div>
+      <div id="lbBody"><div class="lb-empty">加载中...</div></div>
+    </div>
+    <div class="lb-insight" id="lbInsight"></div>
+  </div>
+
+  <footer>
+    <a href="/">← 返回痛点工具箱</a> · 计费：前10分钟免费，之后 ¥0.2/分钟，邀请AI +10分钟
+  </footer>
+
+  <script src="/arcade/arcade-data.js"></script>
+  <script>
+    const GAMES = window.ARCADE_GAMES || [];
+    const EM = { phaser:'🐍', pixi:'🖌️', babylon:'🧊', cocos:'🐰', three:'🎲', melonjs:'🍉', createjs:'🎨', matter:'⚙️', box2d:'🧱', cannon:'🔮', p2:'🌀', default:'🕹️' };
+    function emoji(g) {
+      if (EM[g.engineId] !== undefined && g.engineId.startsWith('eng')) return EM[g.engineId] || '🕹️';
+      return EM[g.engineName] || '🕹️';
+    }
+    const theTheme = t => t;
+    const tabsEl = document.getElementById('tabs');
+    const gridEl = document.getElementById('grid');
+    const qEl = document.getElementById('q');
+
+    function render(theme, keyword) {
+      let list = GAMES.slice(0);
+      if (theme && theme !== 'all') list = list.filter(g => g.themeKey === theme);
+      if (keyword) list = list.filter(g => (g.title + g.pain + g.theme + g.norm).toLowerCase().includes(keyword.toLowerCase()));
+      gridEl.innerHTML = '';
+      list.slice(0, 600).forEach(g => {
+        const d = document.createElement('div');
+        d.className = 'card';
+        d.innerHTML = `<div class="emoji">${emoji(g)}</div><div class="title">${g.title}</div><div class="pain">${g.pain || ''}</div><div class="meta"><span class="chip">${g.engineName}</span><span class="chip">${g.theme}</span><span class="chip free">首10分钟免费</span></div>`;
+        d.onclick = () => { location.href = '/arcade/' + g.id + '.html'; };
+        gridEl.appendChild(d);
+      });
+    }
+
+    // 主题 tab
+    const themes = [...new Set(GAMES.map(g => g.themeKey))];
+    const allBtn = document.createElement('div');
+    allBtn.className = 'tab active';
+    allBtn.textContent = '全部 ' + GAMES.length;
+    allBtn.onclick = () => { document.querySelectorAll('.tab').forEach(t => t.classList.remove('active')); allBtn.classList.add('active'); render('all', qEl.value); };
+    tabsEl.appendChild(allBtn);
+    themes.forEach(th => {
+      const b = document.createElement('div');
+      b.className = 'tab';
+      const cnt = GAMES.filter(g => g.themeKey === th).length;
+      b.textContent = th + ' ' + cnt;
+      b.onclick = () => { document.querySelectorAll('.tab').forEach(t => t.classList.remove('active')); b.classList.add('active'); render(th, qEl.value); };
+      tabsEl.appendChild(b);
+    });
+
+    qEl.addEventListener('input', () => render(document.querySelector('.tab.active').textContent.split(' ')[0], qEl.value));
+    render('all', '');
+
+    // 全站 Top50 榜
+    async function loadTop() {
+      try {
+        const r = await fetch('/api/leaderboard/top?limit=50');
+        const d = await r.json();
+        const rows = (d.top || []).map((g, i) =>
+          '<div class="lb-row">' +
+          '<span style="color:' + (i < 3 ? '#f0c674' : 'var(--muted)') + ';font-weight:700;">' + (i + 1) + '</span>' +
+          '<a style="color:var(--accent);text-decoration:none;cursor:pointer;" href="/arcade/' + g.id + '.html">' + g.title + '</a>' +
+          '<span style="color:var(--muted);">' + (g.theme || '') + '</span>' +
+          '<span style="color:var(--text);">' + (g.players || 0) + '</span>' +
+          '<span class="lb-score" style="color:#f0c674;">' + (g.topScore || 0) + '</span></div>'
+        ).join('');
+        document.getElementById('lbBody').innerHTML = rows || '<div class="lb-empty">还没有人冲榜，来当第一吧！</div>';
+      } catch (e) { document.getElementById('lbBody').innerHTML = '<div class="lb-empty">排行榜暂不可用</div>'; }
+    }
+    async function loadInsight() {
+      try {
+        const r = await fetch('/api/leaderboard/insights');
+        const d = await r.json();
+        const items = (d.insights || []);
+        if (items.length) {
+          document.getElementById('lbInsight').innerHTML = '💡 <b>冲榜心得：</b>' + items.slice(0, 2).map(i => i.tip).join(' ');
+        }
+      } catch (e) {}
+    }
+    loadTop();
+    loadInsight();
+  </script>
+</body>
+</html>

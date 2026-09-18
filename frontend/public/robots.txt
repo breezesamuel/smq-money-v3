@@ -1,0 +1,8 @@
+# smq-v3 robots
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /admin
+
+Sitemap: https://smq-v3.vercel.app/sitemap.xml
+Sitemap: https://smq-v3.vercel.app/rss.xml

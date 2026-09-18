@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Okara 推广控制台</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif; background: #0b1120; color: #e2e8f0; }
+.container { max-width: 1080px; margin: 0 auto; padding: 28px 16px 80px; }
+h1 { font-size: 1.7rem; background: linear-gradient(90deg, #f472b6, #a78bfa); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+.sub { color: #94a3b8; font-size: .95rem; margin: 6px 0 22px; }
+.panel { background: #111827; border: 1px solid #1e293b; border-radius: 14px; padding: 18px; margin-bottom: 16px; }
+.panel h3 { color: #f1f5f9; font-size: .98rem; margin-bottom: 12px; }
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; margin-bottom: 18px; }
+.stat { background: #111827; border: 1px solid #1e293b; border-radius: 12px; padding: 14px; text-align: center; }
+.stat .n { font-size: 1.6rem; font-weight: 700; color: #f472b6; }
+.stat .l { font-size: .78rem; color: #94a3b8; margin-top: 2px; }
+.btn { background: #db2777; color: #fff; border: 0; padding: 9px 18px; border-radius: 8px; cursor: pointer; font-size: .85rem; margin-right: 8px; }
+.btn:hover { background: #ec4899; }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+.btn.secondary { background: #4f46e5; }
+.btn.secondary:hover { background: #6366f1; }
+select, input, textarea { background: #111827; border: 1px solid #334155; color: #e2e8f0; border-radius: 8px; padding: 10px 12px; font-size: .9rem; width: 100%; margin: 6px 0; }
+.row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.result-box { background: #0d1526; border: 1px solid #1e293b; border-radius: 12px; padding: 16px; white-space: pre-wrap; font-size: .85rem; line-height: 1.7; color: #93c5fd; max-height: 420px; overflow: auto; }
+.feed-item { background: #0d1526; border: 1px solid #1e293b; border-radius: 10px; padding: 12px 14px; margin-bottom: 10px; font-size: .88rem; }
+.feed-item .meta { color: #64748b; font-size: .75rem; margin-bottom: 6px; display: flex; gap: 12px; flex-wrap: wrap; }
+.feed-item .content { color: #d1d5db; }
+.chip { display: inline-block; font-size: .7rem; padding: 2px 8px; border-radius: 10px; background: rgba(96,165,250,.12); color: #93c5fd; }
+.chip.pink { background: rgba(244,114,182,.12); color: #f9a8d4; }
+.chip.green { background: rgba(16,185,129,.12); color: #34d399; }
+a { color: #93c5fd; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>🎤 Okara 推广控制台</h1>
+  <p class="sub">Influencer Agent · 多语言多平台内容生成 · 定时分发 · 回流追踪</p>
+
+  <div class="stats" id="stats"></div>
+
+  <div class="panel">
+    <h3>⚡ 手动生成单篇推广帖</h3>
+    <div class="row">
+      <div><label>语言</label><select id="gLang"><option>zh</option><option>en</option><option>ar</option></select></div>
+      <div><label>平台</label><select id="gPlat"><option>twitter</option><option>xiaohongshu</option><option>tiktok</option><option>blog</option></select></div>
+    </div>
+    <div class="row">
+      <div><label>人格</label><select id="gPersona"><option>game_boy</option><option>productivity_hack</option><option>hook_writer</option></select></div>
+      <div><label>素材 (留空=随机)</label><input id="gMaterial" placeholder="如 snake-rush 或 g286.html"></div>
+    </div>
+    <button class="btn secondary" id="genBtn">✨ 生成</button>
+  </div>
+
+  <div class="panel">
+    <h3>🚀 批量 Campaign（默认 3游戏×3工具×3语言×2平台 ≈ 36 帖）</h3>
+    <div class="row">
+      <div><label>游戏数 <select id="cArcade"><option value="3">3</option><option value="6">6</option><option value="1">1</option></select></label></div>
+      <div><label>工具数 <select id="cTools"><option value="3">3</option><option value="6">6</option><option value="1">1</option></select></label></div>
+    </div>
+    <button class="btn" id="campBtn">📦 生成 Campaign</button>
+    <button class="btn secondary" id="planBtn">🗓️ 构建当日分发清单</button>
+    <button class="btn" id="dispatchBtn">📤 执行分发</button>
+  </div>
+
+  <div class="panel">
+    <h3>📄 生成结果</h3>
+    <div class="result-box" id="resultBox">点击上方按钮开始</div>
+  </div>
+
+  <div class="panel">
+    <h3>🗂️ 内容库（最近一轮 Campaign 帖文）</h3>
+    <div id="feed"></div>
+  </div>
+</div>
+
+<script>
+const API = '/api';
+
+async function j(fn, path, body) {
+  const r = await fetch(API + path, {
+    method: fn,
+    headers: body ? { 'Content-Type': 'application/json' } : undefined,
+    body: body ? JSON.stringify(body) : undefined
+  });
+  return r.json();
+}
+
+async function loadStats() {
+  try {
+    const s = await j('GET', '/promo/status');
+    if (!s.success) { document.getElementById('stats').innerHTML = '<div class="stat">API 未就绪</div>'; return; }
+    document.getElementById('stats').innerHTML = [
+      ['生成帖数', s.stats.generated], ['已发布', s.published], ['Campaign', s.campaigns],
+      ['待分发', s.pendingDispatch], ['点击数', s.stats.clicks]
+    ].map(([k, v]) => `<div class="stat"><div class="n">${v}</div><div class="l">${k}</div></div>`).join('');
+  } catch (e) {
+    document.getElementById('stats').innerHTML = '<div class="stat">加载失败</div>';
+  }
+}
+
+async function loadFeed() {
+  try {
+    const s = await j('GET', '/promo/status');
+    const f = await j('GET', '/promo/plan?max=10');
+    const posts = (f.plan || []).concat([]);
+    const el = document.getElementById('feed');
+    if (!posts.length) { el.innerHTML = '<div class="feed-item">暂无内容，先运行 Campaign</div>'; return; }
+    el.innerHTML = posts.map(p => `
+      <div class="feed-item">
+        <div class="meta">
+          <span class="chip pink">${p.platform}</span>
+          <span class="chip">${p.lang}</span>
+          <span class="chip green">${p.persona}</span>
+          <span>${p.postId}</span>
+          <span>${p.model || ''}</span>
+        </div>
+        <div class="content">${(p.content || '').replace(/</g, '&lt;').replace(/\n/g, '<br>')}</div>
+        <div style="margin-top:6px"><a href="${p.url}" target="_blank">${p.url}</a></div>
+      </div>`).join('');
+    const feedCount = document.createElement('div');
+    feedCount.textContent = `（展示待分发 ${posts.length} 条，全库 ${s.postsInFeed} 条）`;
+    feedCount.style.cssText = 'color:#64748b;font-size:.75rem;margin-bottom:8px';
+    el.prepend(feedCount);
+    delete feedCount;
+  } catch (e) {
+    document.getElementById('feed').innerHTML = '<div class="feed-item">加载失败: ' + e.message + '</div>';
+  }
+}
+
+document.getElementById('genBtn').onclick = async () => {
+  const box = document.getElementById('resultBox');
+  box.textContent = '⌛ Okara 生成中...';
+  const btn = document.getElementById('genBtn'); btn.disabled = true;
+  try {
+    const r = await j('POST', '/okara/generate', {
+      lang: document.getElementById('gLang').value,
+      platform: document.getElementById('gPlat').value,
+      persona: document.getElementById('gPersona').value,
+      material: document.getElementById('gMaterial').value || undefined
+    });
+    if (r.success) box.textContent = `（${r.post.model} · ${r.post.postId}）\n\n${r.post.content}`;
+    else box.textContent = '错误: ' + JSON.stringify(r);
+  } catch (e) { box.textContent = '请求失败: ' + e.message; }
+  btn.disabled = false;
+  loadStats();
+};
+
+document.getElementById('campBtn').onclick = async () => {
+  const box = document.getElementById('resultBox');
+  box.textContent = '⌛ 批量生成中（每帖需几秒，36 帖约 1-2 分钟）...';
+  const btn = document.getElementById('campBtn'); btn.disabled = true;
+  try {
+    const r = await j('POST', '/promo/campaign', {
+      arcadeN: Number(document.getElementById('cArcade').value),
+      toolsN: Number(document.getElementById('cTools').value),
+      langs: ['zh', 'en', 'ar'],
+      platforms: ['twitter', 'xiaohongshu']
+    });
+    box.textContent = JSON.stringify(r, null, 2);
+  } catch (e) { box.textContent = '失败: ' + e.message; }
+  btn.disabled = false;
+  loadStats(); loadFeed();
+};
+
+document.getElementById('planBtn').onclick = async () => {
+  const box = document.getElementById('resultBox');
+  try {
+    const r = await j('GET', '/promo/plan?max=3');
+    box.textContent = JSON.stringify(r, null, 2);
+    loadFeed();
+  } catch (e) { box.textContent = '失败: ' + e.message; }
+};
+
+document.getElementById('dispatchBtn').onclick = async () => {
+  const box = document.getElementById('resultBox');
+  box.textContent = '⌛ 分发中...';
+  try {
+    const r = await j('POST', '/promo/dispatch', {});
+    box.textContent = JSON.stringify(r, null, 2);
+  } catch (e) { box.textContent = '失败: ' + e.message; }
+  loadStats(); loadFeed();
+};
+
+loadStats(); loadFeed();
+</script>
+</body>
+</html>

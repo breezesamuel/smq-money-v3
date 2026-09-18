@@ -25,6 +25,10 @@ app.get('/admin', (req, res) => {
   res.sendFile(path.join(__dirname, 'ai-admin', 'index.html'));
 });
 
+app.get('/admin/promo', (req, res) => {
+  res.sendFile(path.join(__dirname, 'ai-admin', 'promo.html'));
+});
+
 const aiManager = new AIEmployeeManager();
 const commandCenter = new CommandCenter(aiManager);
 const customerService = new CustomerServiceConsole();
@@ -242,6 +246,85 @@ app.post('/api/ai/org/board-meeting', async (req, res) => {
   } catch (e) {
     res.status(500).json({ success: false, error: e.message });
   }
+});
+
+// ===== Okara Influencer Agent + 推广自动化 =====
+const promoter = require('./promo/promoter');
+const okara = require('./promo/okara');
+
+// 单次生成一篇推广帖（手动/实时）
+app.post('/api/okara/generate', async (req, res) => {
+  try {
+    const { material, lang, platform, persona } = req.body || {};
+    const pick = require('./promo/promoter').mixMaterials;
+    const mats = material ? [{ slug: material, title: material, pain: '', category: 'custom' }] : pick(1, 1);
+    const post = await okara.generatePost(mats[0], { lang: lang || 'zh', platform: platform || 'twitter', persona: persona || 'game_boy' });
+    const { track } = require('./report/analytics');
+    track('promoGenerated', { detail: { providers: { [post.model]: 1 } } });
+    res.json({ success: !post.error, post });
+  } catch (e) {
+    res.status(500).json({ success: false, error: e.message });
+  }
+});
+
+// 批量生成一轮 campaign（默认低成本 6 素材×3 语言×2 平台）
+app.post('/api/promo/campaign', async (req, res) => {
+  try {
+    const opts = req.body || {};
+    const campaign = await promoter.generateCampaign(opts);
+    const { track } = require('./report/analytics');
+    track('promoGenerated', { amount: campaign.posts.length, detail: { providers: (campaign.posts || []).reduce((a, p) => { if (p.model) a[p.model] = (a[p.model] || 0) + 1; return a; }, {}) } });
+    res.json({ success: true, campaignId: campaign.campaignId, counts: campaign.counts, total: campaign.posts.length });
+  } catch (e) {
+    res.status(500).json({ success: false, error: e.message });
+  }
+});
+
+// 构建当日分发清单
+app.get('/api/promo/plan', (req, res) => {
+  const dateStr = new Date().toISOString().slice(0, 10);
+  const plan = promoter.buildDispatchPlan(dateStr, Number(req.query.max || 3));
+  res.json({ success: true, date: dateStr, plan });
+});
+
+// 立即执行分发（webhook 或本地落库）
+app.post('/api/promo/dispatch', async (req, res) => {
+  try {
+    const result = await promoter.runDispatcher();
+    res.json({ success: true, ...result });
+  } catch (e) {
+    res.status(500).json({ success: false, error: e.message });
+  }
+});
+
+// 手动标记已发布
+app.post('/api/promo/published', (req, res) => {
+  const { postIds } = req.body || {};
+  if (!postIds) return res.status(400).json({ error: 'postIds required' });
+  res.json(promoter.markPublished(postIds));
+});
+
+// 追踪点击 (?ref=POSTID)
+app.get('/api/promo/track', (req, res) => {
+  const postId = req.query.ref;
+  if (!postId) return res.status(400).json({ error: 'ref required' });
+  res.json(promoter.trackClick(postId));
+});
+
+// 推广状态面板
+app.get('/api/promo/status', (req, res) => {
+  const feed = require('./promo/store').get('feed') || [];
+  const published = require('./promo/store').get('published') || [];
+  const dispatchPlan = require('./promo/store').get('dispatchPlan') || [];
+  const stats = require('./promo/store').get('stats') || {};
+  res.json({
+    success: true,
+    stats,
+    campaigns: feed.length,
+    postsInFeed: feed.reduce((a, c) => a + (c.posts ? c.posts.length : 0), 0),
+    published: published.length,
+    pendingDispatch: dispatchPlan.filter(p => !published.some(q => q.postId === p.postId)).length
+  });
 });
 
 // ===== 多模型路由 =====

@@ -3,8 +3,9 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "scripts": {
+"scripts": {
     "dev": "vite",
+    "gen:seo": "node scripts/gen-seo.js",
     "build": "vite build",
     "preview": "vite preview"
   },

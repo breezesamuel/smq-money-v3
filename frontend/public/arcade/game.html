@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>街机游戏 | AI 娱乐中心</title>
+  <meta name="robots" content="index, follow" />
+  <link rel="canonical" href="https://smq-v3.vercel.app/arcade/" />
+  <style>
+    :root { --bg: #0f1220; --card: #1a1f33; --accent: #6c8cff; --text: #e6e9ff; --muted: #9aa3c7; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, Segoe UI, Roboto, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+    .topbar { display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: #161a2b; border-bottom: 1px solid #232a44; position: sticky; top: 0; z-index: 10; }
+    .topbar a { color: var(--accent); text-decoration: none; font-size: 14px; }
+    .topbar .sep { color: var(--muted); }
+    .topbar .title { font-weight: 600; font-size: 15px; color: var(--text); }
+    .container { max-width: 900px; margin: 0 auto; padding: 20px 16px 60px; }
+    .game-header { text-align: center; margin-bottom: 16px; }
+    .game-header h1 { font-size: 22px; }
+    .game-header .sub { color: var(--muted); margin-top: 6px; font-size: 14px; }
+    .meta-row { display: flex; gap: 8px; justify-content: center; margin-top: 12px; flex-wrap: wrap; }
+    .chip { font-size: 12px; padding: 3px 10px; border-radius: 99px; background: #26304f; color: #b9c4ef; }
+    .chip.free { background: #16332596; color: #6fdc8c; }
+    .chip.paid { background: #332a1696; color: #f0c674; }
+    .game-frame { width: 100%; aspect-ratio: 4/6; max-height: 70vh; background: #000; border-radius: 16px; overflow: hidden; border: 1px solid #232a44; position: relative; }
+    .game-frame iframe { width: 100%; height: 100%; border: 0; display: block; }
+    .timer-bar { display: flex; align-items: center; justify-content: center; gap: 16px; margin-top: 14px; padding: 10px 16px; background: #161a2b; border-radius: 12px; border: 1px solid #232a44; font-size: 14px; }
+    .timer { font-variant-numeric: tabular-nums; font-weight: 700; color: var(--accent); min-width: 64px; text-align: center; }
+    .timer.free { color: #6fdc8c; }
+    .timer.paid { color: #f0c674; }
+    .status { font-size: 13px; color: var(--muted); }
+    .btn { padding: 8px 16px; border-radius: 10px; border: none; cursor: pointer; font-size: 13px; font-weight: 600; }
+    .btn.primary { background: var(--accent); color: #fff; }
+    .btn.ghost { background: #232a44; color: var(--text); }
+    .paid-bar { display: flex; align-items: center; gap: 10px; margin-top: 14px; background: #161a2b; border: 1px solid #332a16; border-radius: 12px; padding: 12px 16px; }
+    .paid-bar .price { color: #f0c674; font-weight: 700; }
+    .plans { display: flex; gap: 8px; flex-wrap: wrap; }
+    .plan { padding: 8px 12px; border-radius: 10px; background: #1f253f; border: 1px solid #2d3450; cursor: pointer; font-size: 13px; }
+    .plan:hover { border-color: var(--accent); }
+    .plan b { color: var(--accent); }
+    #toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: #1f253f; padding: 10px 18px; border-radius: 10px; border: 1px solid var(--accent); font-size: 14px; opacity: 0; transition: opacity .3s; pointer-events: none; z-index: 99; }
+    #toast.show { opacity: 1; }
+    .desc-box { margin-top: 20px; background: #151a2c; border: 1px solid #232a44; border-radius: 14px; padding: 16px; }
+    .desc-box h3 { font-size: 15px; margin-bottom: 8px; color: var(--accent); }
+    .desc-box p { color: var(--muted); font-size: 14px; line-height: 1.8; }
+    .more { display: flex; gap: 10px; justify-content: center; margin-top: 24px; flex-wrap: wrap; }
+    .more a { color: var(--accent); text-decoration: none; font-size: 14px; border: 1px solid #2d3450; padding: 6px 14px; border-radius: 99px; }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <a href="/">🏠 痛点工具箱</a>
+    <span class="sep">›</span>
+    <a href="/arcade/">🕹️ 街机游戏中心</a>
+    <span class="sep">›</span>
+    <span class="title" id="crumbTitle">加载中...</span>
+  </div>
+
+  <div class="container">
+    <div class="game-header">
+      <h1 id="gameTitle">加载中...</h1>
+      <div class="sub" id="gamePain"></div>
+      <div class="meta-row" id="gameMeta"></div>
+    </div>
+
+    <div class="game-frame">
+      <iframe id="gameFrame" sandbox="allow-scripts allow-same-origin allow-popups" srcdoc="" title="游戏"></iframe>
+    </div>
+
+    <div class="timer-bar">
+      <span class="status">⏱️ 已玩</span>
+      <span class="timer free" id="timer">0:00</span>
+      <span class="status" id="modeLabel">免费期 · 剩余免费</span>
+      <button class="btn ghost" id="btnInvite" title="邀请 AI +10分钟">🤝 邀请AI +10分钟</button>
+    </div>
+
+    <div class="paid-bar" id="paidBar" style="display:none;">
+      <span class="price" id="priceInfo">¥0.2/分钟</span>
+      <div class="plans" id="plans"></div>
+    </div>
+
+    <div class="desc-box">
+      <h3>🎯 解决痛点</h3>
+      <p id="gameDesc"></p>
+    </div>
+
+    <div class="desc-box">
+      <h3>💬 反馈 &amp; 建议</h3>
+      <p style="color:var(--muted);font-size:13px;margin-bottom:10px;">游戏不满意 / 想要新游戏 / 提建议，告诉我们：</p>
+      <textarea id="fbMsg" rows="3" style="width:100%;box-sizing:border-box;background:#1a1f33;color:var(--text);border:1px solid #2d3450;border-radius:10px;padding:10px;font-family:inherit;font-size:14px;resize:vertical;" placeholder="说说你的想法：想要什么主题的新游戏、哪里不好玩、需要什么功能..."></textarea>
+      <input id="fbContact" type="text" placeholder="联系方式（选填，如邮箱）" style="width:100%;box-sizing:border-box;background:#1a1f33;color:var(--text);border:1px solid #2d3450;border-radius:10px;padding:10px;font-family:inherit;font-size:14px;margin-top:8px;" />
+      <button id="fbSend" class="btn primary" style="margin-top:10px;">提交反馈</button>
+    </div>
+
+    <div class="desc-box">
+      <h3>🏆 排行榜 Top 10</h3>
+      <table id="lbTable" style="width:100%;border-collapse:collapse;font-size:14px;">
+        <thead><tr style="color:var(--muted);text-align:left;"><th style="padding:6px;">#</th><th style="padding:6px;">玩家</th><th style="padding:6px;">分数</th></tr></thead>
+        <tbody id="lbBody"><tr><td colspan="3" style="padding:10px;color:var(--muted);">加载中...</td></tr></tbody>
+      </table>
+      <div style="margin-top:12px;display:flex;gap:8px;align-items:center;">
+        <input id="scoreInput" type="number" min="0" placeholder="我的分数" style="flex:1;background:#1a1f33;color:var(--text);border:1px solid #2d3450;border-radius:10px;padding:10px;font-size:14px;min-width:0;" />
+        <button id="scoreSubmit" class="btn primary">冲榜</button>
+      </div>
+    </div>
+
+    <div class="desc-box">
+      <h3>💡 冲榜心得</h3>
+      <p id="insightBox" style="color:var(--muted);font-size:14px;line-height:1.8;">加载中...</p>
+    </div>
+
+    <div class="more">
+      <a href="/arcade/" id="moreGames">🎮 更多游戏</a>
+      <a href="/" id="backHome">🏠 更多工具</a>
+    </div>
+  </div>
+
+  <div id="toast"></div>
+
+  <script src="/arcade/arcade-data.js"></script>
+  <script src="/arcade-runtime.js"></script>
+  <script>
+    (function () {
+      const GAMES = window.ARCADE_GAMES || [];
+      const id = (location.pathname.match(/\/arcade\/([^\/]+)\.html?/) || [])[1]
+        || (location.pathname.match(/\/arcade\/([^\/]+)\/?$/) || [])[1]
+        || new URLSearchParams(location.search).get('id') || 'g1';
+      const game = GAMES.find(g => g.id === id) || GAMES[0] || {};
+
+      document.title = (game.title || '街机游戏') + ' | 街机游戏中心 - AI 娱乐中心';
+      document.getElementById('gameTitle').textContent = game.title || '';
+      document.getElementById('crumbTitle').textContent = game.title || '';
+      document.getElementById('gamePain').textContent = '🎯 ' + (game.pain || '解压娱乐');
+      document.getElementById('gameDesc').textContent = (game.pain || '') + ' — 由 ' + (game.engineName || 'HTML5') + ' 引擎制作，' + (game.theme || '') + ' 题材。本游戏前10分钟免费，之后 ¥0.2/分钟。邀请 AI 用户可免费增加 10 分钟时长。';
+
+      // canonical
+      let lc = document.querySelector('link[rel=canonical]');
+      if (!lc) { lc = document.createElement('link'); lc.rel = 'canonical'; document.head.appendChild(lc); }
+      lc.href = 'https://smq-v3.vercel.app/arcade/' + (game.id || '') + '.html';
+
+      // meta
+      let mDesc = document.querySelector('meta[name="description"]');
+      if (mDesc) mDesc.content = (game.pain || '') + ' — ' + (game.title || '') + ' 在线街机游戏，前10分钟免费。';
+
+      // meta chips
+      const meta = document.getElementById('gameMeta');
+      meta.innerHTML = [
+        '<span class="chip">' + (game.engineName || '') + '</span>',
+        '<span class="chip">' + (game.theme || '') + '</span>',
+        '<span class="chip free">首10分钟免费</span>',
+        '<span class="chip">¥0.2/分钟</span>'
+      ].join('');
+
+      // 注入游戏 HTML
+      function injectGame(html) {
+        const iframe = document.getElementById('gameFrame');
+        // 确保 srcdoc 尺寸自适应
+        iframe.srcdoc = html;
+      }
+      injectGame(game.html || '<h1 style="color:#fff;text-align:center;padding-top:40px">游戏加载中...</h1>');
+
+      // ---- 计费运行时 ----
+      const slug = game.id || 'g1';
+      let timerSeconds = 0;
+      let mode = 'free';
+      const timerEl = document.getElementById('timer');
+      const modeLabel = document.getElementById('modeLabel');
+      const paidBar = document.getElementById('paidBar');
+      const plansEl = document.getElementById('plans');
+      const PLANS = [ ['m10','10分钟 ¥10'], ['m30','30分钟 ¥30'], ['y99','永久 ¥99'] ];
+      let isPaid = false;
+
+      plansEl.innerHTML = PLANS.map(([k, label]) => `<div class="plan" data-plan="${k}">${label}</div>`).join('');
+      plansEl.querySelectorAll('.plan').forEach(p => {
+        p.onclick = async () => {
+          try {
+            const r = await window.Arcade.recharge(p.dataset.plan);
+            if (r && (r.status === 'added' || r.status === 'permanent')) {
+              showToast(r.message || '充值成功');
+              if (r.status === 'permanent') { isPaid = true; paidBar.style.display = 'none'; }
+              refreshBalance();
+            } else if (r && r.error) showToast(r.error);
+          } catch (e) { showToast('充值失败'); }
+        };
+      });
+
+      async function refreshBalance() {
+        try {
+          const b = await window.Arcade.balance();
+          modeLabel.textContent = b ? ('免费余 ' + b.freeMinutes + ' 分钟') : modeLabel.textContent;
+        } catch (e) {}
+      }
+
+      // 邀请
+      document.getElementById('btnInvite').onclick = async () => {
+        try {
+          const inviteeId = 'ai_' + Date.now().toString(36);
+          const r = await window.Arcade.invite(inviteeId);
+          if (r && r.invitee && r.invitee.freeMinutesAdded > 0) {
+            showToast('🎉 邀请AI成功！+10分钟免费');
+            refreshBalance();
+          } else if (r && r.invitee) {
+            showToast('今日邀请已达上限');
+          }
+        } catch (e) { showToast('邀请失败'); }
+      };
+
+      // 计时器核心
+      const ArcadeRT = window.Arcade;
+      ArcadeRT.start(slug);
+      const tick = () => {
+        const s = ArcadeRT.tick(slug);
+        timerSeconds = s.seconds;
+        timerEl.textContent = ArcadeRT.format(timerSeconds);
+        const freeEnd = ArcadeRT.rules.freeMinutes * 60;
+        if (timerSeconds <= freeEnd) {
+          timerEl.className = 'timer free';
+          modeLabel.textContent = '免费期 · 剩余 ' + ArcadeRT.format(freeEnd - timerSeconds);
+          paidBar.style.display = 'none';
+        } else {
+          timerEl.className = 'timer paid';
+          modeLabel.textContent = '计费中 · ¥0.2/分钟';
+          paidBar.style.display = 'flex';
+        }
+      };
+      tick();
+      setInterval(tick, 1000);
+      refreshBalance();
+
+      function showToast(msg) {
+        const t = document.getElementById('toast');
+        t.textContent = msg;
+        t.classList.add('show');
+        setTimeout(() => t.classList.remove('show'), 2500);
+      }
+
+      // 反馈提交
+      document.getElementById('fbSend').onclick = async () => {
+        const msg = document.getElementById('fbMsg').value.trim();
+        if (!msg) { showToast('请先填写内容'); return; }
+        try {
+          await fetch('/api/feedback', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              page: location.pathname, pageTitle: game.title || '',
+              lang: 'zh', type: 'suggestion',
+              contact: document.getElementById('fbContact').value.trim(),
+              message: msg
+            })
+          });
+          showToast('收到！我们会尽快优化 🎉');
+          document.getElementById('fbMsg').value = '';
+          document.getElementById('fbContact').value = '';
+        } catch (e) { showToast('提交失败，请稍后再试'); }
+      };
+
+      // 排行榜
+      async function loadLeaderboard() {
+        try {
+          const r = await fetch('/api/leaderboard/' + encodeURIComponent(game.id) + '?top=10');
+          const d = await r.json();
+          const rows = (d.items || []).map((it, i) =>
+            '<tr><td style="padding:6px;color:var(--accent);">' + (i + 1) + '</td>' +
+            '<td style="padding:6px;">' + escapeHtml(it.player) + '</td>' +
+            '<td style="padding:6px;color:#f0c674;">' + it.score + '</td></tr>'
+          ).join('');
+          document.getElementById('lbBody').innerHTML = rows || '<tr><td colspan="3" style="padding:10px;color:var(--muted);">还没有人冲榜，来当第一吧！</td></tr>';
+        } catch (e) { document.getElementById('lbBody').innerHTML = '<tr><td colspan="3" style="padding:10px;color:var(--muted);">排行榜暂不可用</td></tr>'; }
+      }
+
+      document.getElementById('scoreSubmit').onclick = async () => {
+        const v = parseInt(document.getElementById('scoreInput').value);
+        if (isNaN(v) || v < 0) { showToast('请输入有效分数'); return; }
+        const player = prompt('留下你的昵称（最多16字）', '玩家');
+        if (player === null) return;
+        try {
+          const r = await fetch('/api/score', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ gameId: game.id, score: v, player: player.slice(0, 16), deviceId: window.Arcade.deviceId })
+          });
+          const d = await r.json();
+          if (d.success) {
+            showToast('🎉 排第 ' + d.rank + ' 名' + (d.isTopIn50 ? '，已进入 Top50！' : ''));
+            loadLeaderboard();
+          } else { showToast(d.error || '提交失败'); }
+        } catch (e) { showToast('提交失败，请稍后再试'); }
+      };
+
+      async function loadInsight() {
+        try {
+          const r = await fetch('/api/leaderboard/insights');
+          const d = await r.json();
+          const tips = (d.insights || []);
+          const mine = tips.find(x => x.gameId === game.id) || tips[tips.length - 1];
+          if (mine) document.getElementById('insightBox').textContent = mine.tip;
+          else document.getElementById('insightBox').textContent = '暂无心得';
+        } catch (e) { document.getElementById('insightBox').textContent = '心得暂不可用'; }
+      }
+
+      function escapeHtml(s) {
+        return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+      }
+
+      loadLeaderboard();
+      loadInsight();
+    })();
+  </script>
+</body>
+</html>

@@ -6,6 +6,18 @@
     {
       "source": "/api/(.*)",
       "destination": "/api/index"
+    },
+    {
+      "source": "/arcade",
+      "destination": "/arcade/index.html"
+    },
+    {
+      "source": "/arcade/",
+      "destination": "/arcade/index.html"
+    },
+    {
+      "source": "/arcade/(.+)",
+      "destination": "/arcade/game.html"
     }
   ]
 }

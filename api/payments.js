@@ -42,7 +42,7 @@ function signMoltsPay(payload, secret) {
 }
 
 // 尝试真实创建订单。返回 { live, provider, orderId, payUrl, qrUrl, message }
-async function createLiveOrder({ toolId, toolName, amountCNY, type, deviceId }) {
+async function createLiveOrder({ toolId, toolName, amountCNY, type, deviceId, plan }) {
   const errors = [];
 
   // 0) 支付宝（中国用户主流，RSA2 签名真实下单）
@@ -50,7 +50,7 @@ async function createLiveOrder({ toolId, toolName, amountCNY, type, deviceId }) 
     const alipay = require('./alipay');
     if (alipay.ready()) {
       const outTradeNo = 't' + Date.now().toString(36).toUpperCase() + Math.floor(Math.random() * 90 + 10);
-      const r = await alipay.createTradeOrder({ outTradeNo, subject: toolName, totalAmount: amountCNY, type, deviceId, toolId });
+      const r = await alipay.createTradeOrder({ outTradeNo, subject: toolName, totalAmount: amountCNY, type, deviceId, toolId, plan });
       if (r.ok && r.url) {
         return { live: true, provider: 'alipay', orderId: outTradeNo, payUrl: r.url, qrUrl: r.url, message: '支付宝收银台（跳转支付）' };
       }

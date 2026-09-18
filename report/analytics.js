@@ -15,12 +15,17 @@ const events = {
   payConfirm: 0,      // 支付成功
   promoGenerated: 0,  // 推广帖生成
   promoDispatched: 0, // 推广帖分发
-  promoClick: 0       // 推广点击
+  promoClick: 0,      // 推广点击
+  feedback: 0,        // 用户反馈提交
+  score: 0,           // 街机得分上报
+  alipayNotify: 0     // 支付宝异步通知到达
 };
 
 const amounts = {
   recharge: 0,
-  referralBonus: 0
+  referralBonus: 0,
+  payConfirm: 0,      // 支付成功实际金额（track('payConfirm',{amount})）
+  alipayNotify: 0     // 支付宝通知到账金额
 };
 
 const detail = {
@@ -30,7 +35,9 @@ const detail = {
   topGames: {},       // gameId -> plays
   plans: {},          // plan -> count
   providers: {},      // model -> count
-  clickByPost: {}     // postId -> clicks
+  clickByPost: {},    // postId -> clicks
+  types: {},          // 反馈类型 -> count
+  pages: {}           // 反馈页面 -> count
 };
 
 function incCounter(map, key, n) {
@@ -79,6 +86,8 @@ function reset() {
   detail.plans = {};
   detail.providers = {};
   detail.clickByPost = {};
+  detail.types = {};
+  detail.pages = {};
 }
 
 module.exports = { track, snapshot, reset, events, amounts, detail };

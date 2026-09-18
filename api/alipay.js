@@ -86,7 +86,7 @@ function callGateway(params, method = 'GET') {
 }
 
 // 创建付款订单（手机网站支付/电脑网站回退）-> 返回跳转 URL
-async function createTradeOrder({ outTradeNo, subject, totalAmount, type, deviceId, toolId, notifyUrl }) {
+async function createTradeOrder({ outTradeNo, subject, totalAmount, type, deviceId, toolId, notifyUrl, plan }) {
   if (!ready()) return { ok: false, error: 'alipay not configured (missing APP_ID or PRIVATE_KEY)' };
   const method = 'alipay.trade.wap.pay';
   const biz = {
@@ -95,7 +95,7 @@ async function createTradeOrder({ outTradeNo, subject, totalAmount, type, device
     subject: subject.slice(0, 200),
     product_code: 'QUICK_WAP_PAY',
     timeout_express: '2h',
-    passback_params: Buffer.from(JSON.stringify({ deviceId, type, toolId })).toString('base64'),
+    passback_params: Buffer.from(JSON.stringify({ deviceId, type, toolId, plan: plan || null })).toString('base64'),
     quit_url: CONFIG.returnUrl
   };
   const params = buildRequest(biz, method);

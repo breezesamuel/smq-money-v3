@@ -9,7 +9,7 @@ const LAST_FILE = path.join(__dirname, 'alerts', 'monitor-last.json');
 
 // 默认目标：生产站点核心端点
 function defaultTargets() {
-  const base = process.env.MONITOR_BASE_URL || 'https://smq-v3.vercel.app';
+  const base = process.env.MONITOR_BASE_URL || 'https://smq-v3-jhcdp9bu6-solmount.vercel.app';
   return [
     { name: 'health', url: base + '/api/health', expect: { status: 200, json: { status: 'ok' } } },
     { name: 'tools', url: base + '/api/tools?per=1', expect: { status: 200, json: { total: (v) => Number(v) > 100 } } },

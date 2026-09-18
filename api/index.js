@@ -91,7 +91,7 @@ const PLAN_MONTHS = { monthly: 1, quarterly: 3, yearly: 12 };
 
 // 授权开通（支付确认/query 共用）：计入 license、计提 5% 推广费、返佣给邀请人
 // 订阅类型同时按 PLAN_MONTHS 延长全站订阅到期时间（subscriptionUntil）
-function grantAccess(deviceId, toolId, type, { source = 'pay', tools = [], plan } = {}) {
+function grantAccess(deviceId, toolId, type, { source = 'pay', tools = [], plan, amount } = {}) {
   const u = findUser(deviceId);
   const t = tools.find(x => x.id === toolId);
   if (!t) return { ok: false, error: '工具不存在' };
@@ -106,12 +106,13 @@ function grantAccess(deviceId, toolId, type, { source = 'pay', tools = [], plan 
     persistUser(u);
   }
   if (!u.tools[toolId]) u.tools[toolId] = license;
-  track('payConfirm', { amount: type === 'lifetime' ? t.pricing.lifetime : (plan ? PLAN_MONTHS[plan] : 1) * t.pricing.monthly, source, plan: plan || null });
+  // 实际入账金额：优先外部真实到账（支付宝 notify/query）；否则按套餐 CNY 实价计提
+  const amt = amount != null ? Number(amount) : (type === 'lifetime' ? t.pricing.lifetime : (subscriptionPlans().zh[plan] || t.pricing.monthly));
+  track('payConfirm', { amount: amt, source, plan: plan || null });
   // 收入计提 5% 进推广费基金（自主投放预算）
   try {
     const { accrue } = require('../promo/fund');
-    const amount = type === 'lifetime' ? t.pricing.lifetime : (plan ? PLAN_MONTHS[plan] : 1) * t.pricing.monthly;
-    accrue(amount, { ref: deviceId + '/' + toolId });
+    accrue(amt, { ref: deviceId + '/' + toolId });
   } catch (e) { /* fund 未配置时忽略 */ }
 
   // 返佣：被邀请者首次有效付费 -> 邀请人朋友数+1；按朋友数发放订阅月数奖励
@@ -123,7 +124,7 @@ function grantAccess(deviceId, toolId, type, { source = 'pay', tools = [], plan 
       const n = inviter.verifiedFriends || 0;
       const newN = n + 1;
       const ratio = n < 1 ? 0.10 : n < 2 ? 0.30 : n < 3 ? 0.50 : n < 5 ? 0.70 : 1.00;
-      const paid = type === 'lifetime' ? t.pricing.lifetime : (plan ? PLAN_MONTHS[plan] : 1) * t.pricing.monthly;
+      const paid = amt;
       inviter.verifiedFriends = newN;
       inviter.bonusGiven = (inviter.bonusGiven || 0) + paid * ratio;
       // 订阅月数奖励
@@ -198,7 +199,9 @@ module.exports = async (req, res) => {
         if (ok && tradeStatus === 'TRADE_SUCCESS') {
           if (pb.deviceId && pb.toolId) {
             track('alipayNotify', { amount: Number(params.total_amount || 0) });
-            grantAccess(pb.deviceId, pb.toolId, pb.type === 'lifetime' ? 'lifetime' : 'subscription', { source: 'alipay-notify', tools });
+            grantAccess(pb.deviceId, pb.toolId, pb.type === 'lifetime' ? 'lifetime' : 'subscription', {
+              source: 'alipay-notify', tools, plan: pb.plan, amount: Number(params.total_amount || 0)
+            });
           }
           res.setHeader('Content-Type', 'text/plain');
           res.status(200).end('success');
@@ -452,6 +455,7 @@ module.exports = async (req, res) => {
     // POST /api/pay/confirm 确认支付 -> 开通许可 + 返佣（仅 demo 环境直付；真实收款已配置时必须带已支付订单号）
     if (p[0] === 'pay' && p[1] === 'confirm') {
       const { deviceId, toolId, type, orderId, plan } = body;
+      let paidAmount = null;
       if (!deviceId || !toolId) return badRequest(res, '需要 deviceId/toolId');
       // 冷启动先从库恢复，避免新建空用户覆盖已存邀请关系/累计
       await ensureUser(deviceId);
@@ -466,8 +470,9 @@ module.exports = async (req, res) => {
         if (!(q && q.ok && (status === 'TRADE_SUCCESS' || status === 'TRADE_FINISHED'))) {
           return json(res, { success: false, paid: false, status: status || null, error: '订单未支付' }, 402);
         }
+        paidAmount = Number(q.amount || 0);
       }
-      const g = grantAccess(deviceId, toolId, type, { source: 'confirm', tools, plan });
+      const g = grantAccess(deviceId, toolId, type, { source: 'confirm', tools, plan, amount: paidAmount });
       if (!g.ok) return notFound(res, g.error);
       return json(res, { success: true, status: 'paid', license: g.license, message: '支付成功已开通' });
     }
@@ -487,7 +492,7 @@ module.exports = async (req, res) => {
       try { q = await alipay.queryTrade(orderId); } catch (e) { q = { ok: false, error: e.message }; }
       const status = q && q.status;
       if (q && q.ok && (status === 'TRADE_SUCCESS' || status === 'TRADE_FINISHED')) {
-        const g = grantAccess(deviceId, toolId, type || 'subscription', { source: 'query', tools, plan });
+        const g = grantAccess(deviceId, toolId, type || 'subscription', { source: 'query', tools, plan, amount: Number(q.amount || 0) });
         return json(res, { success: true, paid: true, status, license: g && g.license, message: '支付核验成功已开通' });
       }
       return json(res, { success: true, paid: false, status: status || null, reason: q && q.error || 'pending' });

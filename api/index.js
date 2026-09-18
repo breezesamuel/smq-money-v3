@@ -192,6 +192,8 @@ module.exports = async (req, res) => {
         delete params.sign;
         delete params.sign_type;
         const ok = alipay.verify(params, signValue);
+        if (!ok) track('alipayNotify', { detail: { verifyFailed: 1 }, _inc: false });
+        if (!ok) console.error('[alipay-notify] 验签失败', { out_trade_no: params.out_trade_no, trade_status: params.trade_status });
         const tradeStatus = params.trade_status;
         const passback = params.passback_params ? Buffer.from(params.passback_params, 'base64').toString('utf8') : '';
         let pb = {};

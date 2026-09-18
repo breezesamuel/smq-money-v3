@@ -50,13 +50,13 @@ function buildRequest(bizContent, method) {
     format: 'JSON',
     charset: 'utf-8',
     sign_type: 'RSA2',
-    timestamp: new Date().toISOString().replace(/\.\d+Z$/, '+08:00').replace('T', ' '),
+    timestamp: (() => { const d = new Date(Date.now() + 8 * 3600 * 1000); return d.toISOString().slice(0, 19).replace('T', ' '); })(),
     version: '1.0',
     biz_content: JSON.stringify(bizContent),
     notify_url: CONFIG.notifyUrl,
     return_url: CONFIG.returnUrl
   };
-  if (CONFIG.account) params.seller_id = CONFIG.account;
+  if (CONFIG.account && method === 'alipay.trade.wap.pay') params.seller_id = CONFIG.account;
   params.sign = sign(params);
   return params;
 }
@@ -106,7 +106,7 @@ async function createTradeOrder({ outTradeNo, subject, totalAmount, type, device
 // 支付宝账单查询（用于 pay/confirm 人工或自动核验）
 async function queryTrade(outTradeNo) {
   const method = 'alipay.trade.query';
-  const params = buildRequest({ out_trade_no: outTradeNo, query_options: ['trade_status'] }, method);
+  const params = buildRequest({ out_trade_no: outTradeNo }, method);
   const r = await callGateway(params, 'POST');
   if (r.data) {
     const resp = r.data['alipay_trade_query_response'] || {};

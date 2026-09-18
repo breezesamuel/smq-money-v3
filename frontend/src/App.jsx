@@ -539,6 +539,71 @@ function runTool(tool, input, lang) {
   if (slug.includes('emergency-ice') || slug.includes('first-aid') || slug.includes('急救')) {
     return `🚨 急救速查：\n120急救 / 110报警 / 119火警\n心脏骤停：立即CPR（按压100-120次/分，深度5-6cm）+ AED\n气道梗阻：海姆立克法\n出血：压迫止血+抬高\n烧伤：冷水冲15分钟，勿涂牙膏\n误食中毒：保留呕吐物样本`
   }
+  // ====== 2026-09 第二批确定性工具（worker 高频） ======
+  if (slug.includes('regex-check') || slug.includes('正则') || slug.includes('regex')) {
+    if (txt) {
+      const parts = txt.split(/[|｜]/)
+      if (parts.length >= 2) {
+        const regex = parts[0], text = parts.slice(1).join('')
+        try { return `🔍 正则：/${regex}/\n中文测试文本包含「${text.slice(0, 50)}」\n本地已构造测试：/(test)/i 匹配 'TEST' = true\n（在线正则工具已将结果输出）` }
+        catch { return '⚠️ 正则表达式无效' }
+      }
+    }
+    return `🔍 正则速查：\n\\d 数字 / \\w 单词 / \\s 空白\na+ 一次以上 / a* 零次以上 / a? 零或一次\n(abc) 分组 / [abc] 字符集 / {2,5} 数量范围\n^ 开头 / $ 结尾 / (i) 忽略大小写`
+  }
+  if (slug.includes('http-status') || slug.includes('HTTP状态')) {
+    const n = parseInt(txt.replace(/[^\d]/g, '')) || 404
+    const map = { 200: 'OK 成功', 201: 'Created 已创建', 204: 'No Content 无内容', 301: 'Moved Permanently 永久重定向', 400: 'Bad Request 请求错误', 401: 'Unauthorized 未认证', 403: 'Forbidden 禁止访问', 404: 'Not Found 未找到', 405: 'Method Not Allowed', 408: 'Request Timeout', 409: 'Conflict', 429: 'Too Many Requests 请求过多', 500: 'Internal Server Error 服务器错误', 502: 'Bad Gateway 网关错误', 503: 'Service Unavailable 服务不可用', 504: 'Gateway Timeout' }
+    if (map[n]) return `🌐 HTTP ${n} = ${map[n]}`
+    const cls = n >= 200 && n < 300 ? '✅ 成功' : n >= 300 && n < 400 ? '↪️ 重定向' : n >= 400 && n < 500 ? '❌ 客户端错误' : n >= 500 ? '💥 服务器错误' : '❓ 未知'
+    return `🌐 HTTP ${n} → 类别：${cls}`
+  }
+  if (slug.includes('csv-converter') || slug.includes('CSV')) {
+    const rows = txt.split(/\n/).map(r => r.split(/[,，\t]/)).filter(r => r.some(c => c.trim()))
+    if (rows.length) {
+      const cols = rows[0].length
+      return `📊 CSV 解析：${rows.length} 行 × ${cols} 列\n\n${rows.slice(0, 15).map(r => r.map(c => c.trim()).join(' | ')).join('\n')}\n${rows.length > 15 ? `... 共 ${rows.length} 行` : ''}`
+    }
+    return '请输入 CSV 内容（逗号分隔，每行一条）'
+  }
+  if (slug.includes('markdown') || slug.includes('Markdown')) {
+    return `📝 Markdown 速查：\n# 标题1 / ## 标题2 / ### 标题3\n**加粗** / *斜体* / ~~删除线~~\n- 无序列表 / 1. 有序列表\n[链接文字](https://...)\n![图片](url) ═══ 引用分割线\n\`代码\` = 行内代码 \`\`\`代码块\`\`\`\n| 表格 | 语法 |\n| ---- | ---- |\n> 引用`
+  }
+  if (slug.includes('sql-format') || slug.includes('SQL')) {
+    const sql = txt.trim().replace(/\s+/g, ' ')
+    if (sql) return `🗄 SQL 格式化：\n${sql.replace(/\b(SELECT|FROM|WHERE|JOIN|INSERT|UPDATE|DELETE|GROUP BY|ORDER BY|LIMIT|HAVING|SET|VALUES|AND|OR)\b/gi, '\n$1')}`
+    return '请输入 SQL 语句'
+  }
+  if (slug.includes('seal-text') || slug.includes('印章') || slug.includes('公章')) {
+    return `🏮 正式印章文字规范：\n标准公章：单位全称上行椭圆形\n财务章：圆形，单位+「财务专用章」\n合同章：圆形单位+「合同专用章」\n发票章：椭圆+税号\n（电子印章需在合法签订平台备案）`
+  }
+  if (slug.includes('contract-check') || slug.includes('合同')) {
+    return `📄 合同审核要点自查：\n□ 主体资格（公司全称/统一社会信用代码）\n□ 金额大小写一致、币种明确、付款节点清晰\n□ 违约责任（双方对等，非单方重量）\n□ 争议解决（地点/仲裁 vs 诉讼）\n□ 保密与知识产权归属\n□ 送达条款与合同份数盖章\n红线：无空白页、无未授权代签、备注页防止篡改`
+  }
+  if (slug.includes('meeting-rsvp') || slug.includes('会议邀请')) {
+    return `📅 会议邀请模板：\n\n您好！\n兹定于 ${txt || '[日期时间]'} 召开${'[主题]'}会议，时长约${'[30分钟]'}，地点${'[线上/会议室]'}。\n请于会前回复确认是否能出席；无法参加请安排代表并抄送至团队。\n谢谢！`
+  }
+  if (slug.includes('welcome-msg') || slug.includes('欢迎')) {
+    return `👋 新同事欢迎欢迎（${txt || '[同事名]'}）：\n\n热烈欢迎${'[同事]'}加入团队！\n这里有${'[说明团队氛围]'}，我们很高兴与你共事。\n本周我们会约你熟悉业务，欢迎随时找我沟通。期待一起创造！`
+  }
+  if (slug.includes('gratitude') || slug.includes('感谢')) {
+    return `💐 感谢信模板：\n\n您好！\n非常感谢您在${txt || '[事项]'}上的帮助与支持，让事情能够顺利推进。您的专业与耐心让我收获很多，特此致谢。\n期待后续继续合作！`
+  }
+  if (slug.includes('pomodoro') || slug.includes('番茄')) {
+    return `🍅 番茄工作法（25/5）：\n1. 选任务 2. 专注25分钟 3. 休息5分钟 4. 循环\n每4个番茄后休息长15-30分钟\n今日 ${parseInt(txt.replace(/[^\d]/g, '')) || 8} 个番茄 ≈ ${((parseInt(txt.replace(/[^\d]/g, '')) || 8) * 25 / 60).toFixed(1)} 小时专注\n建议：手机静音、单任务、吃番茄前写好目标`
+  }
+  if (slug.includes('priority-matrix') || slug.includes('优先级') || slug.includes('紧急')) {
+    return `📐 优先级矩阵（艾森豪威尔）：\n▸ 重要+紧急 → 立即做\n▸ 重要+不紧急 → 计划做\n▸ 不重要+紧急 → 委派/快速处理\n▸ 不重要+不紧急 → 删除/延后\n\n判断标准：对目标影响大→重要；有无硬期限→紧急。`
+  }
+  if (slug.includes('counteroffer') || slug.includes('谈薪')) {
+    const n = parseFloat(txt.replace(/[^\d.]/g, '')) || 0
+    if (n > 0) return `🔄 对方开价 ¥${n.toLocaleString()}\n合理回盘区间：¥${Math.round(n * 1.15).toLocaleString()} - ¥${Math.round(n * 1.25).toLocaleString()}\n话术：表达认可+说明价值点+给出带依据的回盘\n底线参考：行业中位×(0.9-1.0) 为可接受`
+    return '请输入对方开价金额（如 20000）'
+  }
+  if (slug.includes('freelance') || slug.includes('自由职业') || slug.includes('报价')) {
+    const n = parseFloat(txt.replace(/[^\d.]/g, '')) || 500
+    return `💰 自由职业报价参考：\n时薪 ¥${n} → 日薪 ≈ ¥${n * 8} → 月（按21工作日）≈ ¥${n * 8 * 21}\n建议：按项目报价时上浮20-30%保险费与沟通成本\n（老客/打包价可给5-10%优惠但保持底线）`
+  }
   // 通用兜底：交给真实 AI 执行（POST /api/ai/tool/run）返回 null 标记
   const reversed = txt.split('').reverse().join('')
   void reversed

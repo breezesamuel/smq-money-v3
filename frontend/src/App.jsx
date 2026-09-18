@@ -458,7 +458,14 @@ function App() {
         body: JSON.stringify({ deviceId, toolId: payModal.id, type })
       })
       const d = await r.json()
-      // 确认支付（演示直付）
+      // 真实支付网关（支付宝等）有 payUrl -> 跳转收银台；demo 模式则直接确认
+      if (d.gateway && d.gateway.live && d.payUrl) {
+        setPayModal(null)
+        window.open(d.payUrl, '_blank', 'noopener')
+        showToast(t.pay_redirect || '正在打开收银台…')
+        return
+      }
+      // 演示直付
       await fetch(`${API}/api/pay/confirm`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ deviceId, toolId: payModal.id, type })

@@ -45,6 +45,7 @@ const I18N = {
     tier_10: '10位伙伴 → 免费1年',
     choose_tool: '选择你想用的工具',
     processing: '处理中...',
+    ai_running: 'AI 正在处理…',
     result: '结果',
     input_placeholder: '输入内容，点击处理...',
     process: '处理',
@@ -104,6 +105,7 @@ const I18N = {
     tier_10: '10 friends → 1 year free',
     choose_tool: 'Pick a tool to use',
     processing: 'Processing...',
+    ai_running: 'AI is processing…',
     result: 'Result',
     input_placeholder: 'Type something, click process...',
     process: 'Process',
@@ -163,6 +165,7 @@ const I18N = {
     tier_10: '10 أصدقاء → سنة مجاناً',
     choose_tool: 'اختر أداة للاستخدام',
     processing: 'جارٍ المعالجة...',
+    ai_running: 'يعالج الذكاء الاصطناعي…',
     result: 'النتيجة',
     input_placeholder: 'اكتب شيئاً ثم اضغط معالجة...',
     process: 'معالجة',
@@ -299,9 +302,10 @@ function runTool(tool, input) {
     }
     return '请输入：贷款万元 年限（如 200 30）'
   }
-  // 通用工具：生成处理结果
+  // 通用兜底：交给真实 AI 执行（POST /api/ai/tool/run）返回 null 标记
   const reversed = txt.split('').reverse().join('')
-  return `✅ ${title} 处理完成：\n${txt ? '输入内容已被处理。' : '点击下方输入内容再处理。'}\n\n▸ 识别痛点：${tool.name?.pain || '提升效率'}\n▸ 处理结果摘要：已生成标准化输出（反序预览：${reversed.slice(0, 40)}${reversed.length > 40 ? '...' : ''}）`
+  void reversed
+  return null
 }
 
 function App() {
@@ -455,9 +459,29 @@ function App() {
       return
     }
     setProcessing(true)
-    await new Promise(r => setTimeout(r, 400))
-    setResult(runTool(tool, input))
-    setProcessing(false)
+    setResult('')
+    await new Promise(r => setTimeout(r, 300))
+    try {
+      const local = runTool(tool, input)
+      if (local !== null) {
+        setResult(local)
+        return
+      }
+      // 无本地逻辑 -> 调用真实 AI 执行（智谱等模型按工具痛点生成结果）
+      showToast(t.ai_running || 'AI 正在处理…')
+      const r = await fetch(`${API}/api/ai/tool/run`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tool: { slug: tool.slug, name: tool.name }, input, lang })
+      })
+      const d = await r.json()
+      if (d && d.success && d.result) setResult(d.result)
+      else setResult('⚠️ AI 服务暂不可用，请稍后再试。')
+    } catch (e) {
+      console.error(e)
+      setResult('⚠️ AI 调用失败：' + (e.message || '网络错误'))
+    } finally {
+      setProcessing(false)
+    }
     // 记录一次使用
     try {
       await fetch(`${API}/api/use`, {

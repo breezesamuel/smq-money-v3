@@ -134,6 +134,29 @@ app.post('/api/ai/brain/think', (req, res) => {
   });
 });
 
+// POST /api/ai/tool/run - 512 小工具真实执行（按工具痛点构造 system prompt）
+app.post('/api/ai/tool/run', async (req, res) => {
+  const { tool, input, lang } = req.body || {};
+  if (!tool || !tool.slug) return res.status(400).json({ error: '需要 tool' });
+  const meta = (tool.name && (tool.name[lang] || tool.name.zh || tool.name.en)) || {};
+  const fallbackMeta = (tool.name && tool.name.zh) || {};
+  const title = meta.title || fallbackMeta.title || tool.slug;
+  const pain = meta.pain || fallbackMeta.pain || '';
+  const desc = meta.desc || fallbackMeta.desc || '';
+  const langHint = lang === 'en' ? 'English' : lang === 'ar' ? 'العربية' : '简体中文';
+  const system = `你是一个名为「${title}」的实用 AI 工具。\n核心价值：${pain}\n职责：${desc}\n要求：用${langHint}直接输出高质量、具体、可直接落地的结果。禁止寒暄客套。若用户输入不足，主动给出一组典型示例或询问关键信息后给出最佳答案。`;
+  const prompt = input && String(input).trim()
+    ? `用户请求：${String(input).trim().slice(0, 4000)}\n请用「${title}」的能力处理并给出结果。`
+    : `请用「${title}」的典型能力演示一次完整输出（含示例）。`;
+  try {
+    const r = await modelRouter.call(prompt, { system, temperature: 0.7, maxTokens: 1500 });
+    if (r.error) return res.status(502).json({ error: r.error, details: r.details });
+    res.json({ success: true, result: r.content, model: r.model });
+  } catch (e) {
+    res.status(502).json({ error: e.message });
+  }
+});
+
 app.post('/api/ai/brain/analyze', (req, res) => {
   const { text, type } = req.body;
   aiBrain.analyze(text, type || 'general').then(result => {

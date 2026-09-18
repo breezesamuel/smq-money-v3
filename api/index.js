@@ -219,6 +219,47 @@ module.exports = (req, res) => {
     return getAiApp()(req, res);
   }
 
+  // POST /api/alipay/notify - 支付宝异步通知（form-encoded，验签后开通+计提）
+  if (p[0] === 'alipay' && p[1] === 'notify' && req.method === 'POST') {
+    let raw = '';
+    req.on('data', c => raw += c);
+    req.on('end', () => {
+      try {
+        const alipay = require('./alipay');
+        const params = alipay.parseNotifyForm(raw);
+        const signValue = params.sign;
+        delete params.sign;
+        delete params.sign_type;
+        const ok = alipay.verify(params, signValue);
+        const tradeStatus = params.trade_status;
+        const passback = params.passback_params ? Buffer.from(params.passback_params, 'base64').toString('utf8') : '';
+        let pb = {};
+        try { pb = JSON.parse(passback); } catch (e) {}
+        if (ok && tradeStatus === 'TRADE_SUCCESS') {
+          const u = findUser(pb.deviceId || 'anon');
+          const t = tools.find(x => x.id === pb.toolId);
+          if (t) {
+            u.tools[pb.toolId] = pb.type === 'lifetime' ? 'lifetime' : 'subscription';
+            track('alipayNotify', { amount: Number(params.total_amount || 0) });
+            try {
+              const { accrue } = require('../promo/fund');
+              accrue(Number(params.total_amount || 0), { ref: 'alipay/' + params.trade_no });
+            } catch (e) {}
+          }
+          res.setHeader('Content-Type', 'text/plain');
+          res.status(200).end('success');
+        } else {
+          res.setHeader('Content-Type', 'text/plain');
+          res.status(200).end('fail');
+        }
+      } catch (e) {
+        res.setHeader('Content-Type', 'text/plain');
+        res.status(200).end('fail');
+      }
+    });
+    return;
+  }
+
   // GET /api/tools
   if (p[0] === 'tools' && p.length === 1 && req.method === 'GET') {
     const cat = q.category, query = (q.q || '').toLowerCase(), lang = q.lang || 'zh';

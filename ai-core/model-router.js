@@ -38,7 +38,12 @@ class ModelRouter {
     // 默认优先级：智谱主 -> deepseek -> kimi -> siliconflow -> 其余
     order.sort((a, b) => {
       const rank = { zhipu1: 0, deepseek: 1, kimi: 2, siliconflow: 3, agnes: 4, minimax: 5, zhipu2: 6, volcengine: 7, nvidia: 8 };
-      return (rank[a] ?? 50) - (rank[b] ?? 50);
+      const ra = rank[a] ?? 50, rb = rank[b] ?? 50;
+      if (preferred) {
+        if (a === preferred) return -1;
+        if (b === preferred) return 1;
+      }
+      return ra - rb;
     });
 
     const lastError = [];

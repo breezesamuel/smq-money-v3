@@ -45,6 +45,19 @@ function signMoltsPay(payload, secret) {
 async function createLiveOrder({ toolId, toolName, amountCNY, type, deviceId }) {
   const errors = [];
 
+  // 0) 支付宝（中国用户主流，RSA2 签名真实下单）
+  try {
+    const alipay = require('./alipay');
+    if (alipay.ready()) {
+      const outTradeNo = 't' + Date.now().toString(36).toUpperCase() + Math.floor(Math.random() * 90 + 10);
+      const r = await alipay.createTradeOrder({ outTradeNo, subject: toolName, totalAmount: amountCNY, type, deviceId, toolId });
+      if (r.ok && r.url) {
+        return { live: true, provider: 'alipay', orderId: outTradeNo, payUrl: r.url, qrUrl: r.url, message: '支付宝收银台（跳转支付）' };
+      }
+      errors.push('alipay:' + (r.error || 'no url'));
+    }
+  } catch (e) { errors.push('alipay:' + e.message); }
+
   // 1) MoltsPay（若有服务端订单 API）
   if (PAYMENT_CONFIG.providers.moltspay.active && env('MOLTSPAY_REST_URL')) {
     try {

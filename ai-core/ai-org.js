@@ -77,14 +77,14 @@ function buildOrg() {
 
 const orgSingleton = buildOrg();
 
-// 每周主管例会：CEO 总结全局并分派部门任务
-async function weeklyBoardMeeting(context = {}) {
-  const status = await orgSingleton.org.CEO.execute('weekly_board_meeting', {
-    instructions: context.instructions || 'Review the week, set next week priorities for all departments, allocate budget.',
+// 每日主管例会：CEO 当日工作总结并分派今日任务
+async function dailyBoardMeeting(context = {}) {
+  const status = await orgSingleton.org.CEO.execute('daily_board_meeting', {
+    instructions: context.instructions || 'review today\'s work, set priorities for today, allocate today\'s budget.',
     companyContext: {
-      dailyRevenueTarget: context.dailyRevenueTarget || 30000,
+      dailyRevenueTarget: context.dailyRevenueTarget || 5000,
       currentRevenue: context.currentRevenue || 0,
-      toolsCount: context.toolsCount || 317
+      toolsCount: context.toolsCount || 512
     },
     departments: Object.keys(PROFILES)
   });
@@ -96,7 +96,8 @@ module.exports = {
   SmartEmployee,
   buildOrg,
   orgSingleton,
-  weeklyBoardMeeting,
+  weeklyBoardMeeting: dailyBoardMeeting,
+  dailyBoardMeeting,
   orgManager: orgSingleton.manager,
   orgEmployees: orgSingleton.org
 };

@@ -4,7 +4,7 @@ const path = require('path');
 const { AIEmployeeManager, AICEO, AICFO } = require('./ai-core/employees');
 const { CommandCenter, CustomerServiceConsole, DecisionConsole } = require('./ai-core/command-center');
 const { AIBrain, aiBrain } = require('./ai-core/ai-brain');
-const { orgManager, orgEmployees, weeklyBoardMeeting, PROFILES } = require('./ai-core/ai-org');
+const { orgManager, orgEmployees, weeklyBoardMeeting, dailyBoardMeeting, PROFILES } = require('./ai-core/ai-org');
 const { modelRouter } = require('./ai-core/model-router');
 const { activeModels, WALLETS, ADMIN } = require('./ai-core/config');
 const { TranslationService, translator } = require('./ai-core/translation');
@@ -14,6 +14,31 @@ const { SecuritySystem, EvolutionSystem, securitySystem, evolutionSystem } = req
 
 const app = express();
 const PORT = process.env.PORT || 3003;
+
+// AI 每日调用上限防护（环境变量 AI_DAILY_CALL_LIMIT 默认 5000）
+// key 格式: IP@YYYY-MM-DD；跨实例不可共享（Serverless 实例独立计数）
+const dailyCallLimit = process.env.AI_DAILY_CALL_LIMIT || 5000;
+const dailyCalls = new Map();
+
+function checkAiDailyLimit(ip) {
+  const today = new Date().toISOString().slice(0, 10);
+  const key = `${ip}@${today}`;
+  const cnt = dailyCalls.get(key) || 0;
+  if (cnt >= dailyCallLimit) {
+    return false; // 超限
+  }
+  dailyCalls.set(key, cnt + 1);
+  return true;
+}
+
+// 按 IP 计费的中间件，挂在 /api/ai 前
+app.use('/api/ai', (req, res, next) => {
+  const ip = req.ip || 'unknown';
+  if (!checkAiDailyLimit(ip)) {
+    return res.status(429).json({ error: '每日 AI 调用上限' });
+  }
+  next();
+});
 
 app.use(cors({
   origin: '*',
@@ -218,30 +243,35 @@ app.post('/api/ai/customer-service/ticket/:id/resolve', (req, res) => {
   res.json({ success: true, ticket });
 });
 
-// ===== AI 智能组织架构 (Smart Org) =====
-app.get('/api/ai/org', (req, res) => {
-  res.json({
-    profiles: Object.entries(PROFILES).map(([role, p]) => ({ role, ...p, stats: orgEmployees[role].getStats() })),
-    total: Object.keys(PROFILES).length,
-    wallets: WALLETS
-  });
-});
-
-app.post('/api/ai/org/:role/task', async (req, res) => {
-  const role = req.params.role.toUpperCase();
-  if (!orgEmployees[role]) return res.status(404).json({ error: 'unknown role' });
-  const { kind, data } = req.body;
+app.post('/api/ai/org/board-meeting', async (req, res) => {
   try {
-    const result = await orgEmployees[role].execute(kind || 'general_task', data || {});
+    const result = await weeklyBoardMeeting(req.body || {});
     res.json({ success: true, result });
   } catch (e) {
     res.status(500).json({ success: false, error: e.message });
   }
 });
 
-app.post('/api/ai/org/board-meeting', async (req, res) => {
+// 每日主管例会调度器（在 Serverless 实例启动时启动，每天固定时间自动触发）
+const dailyBoardInterval = setInterval(() => {
+  const now = new Date();
+  const todayStr = now.toISOString().slice(0, 10);
+  const lastRun = global._lastDailyBoard;
+  if (lastRun !== todayStr) {
+    global._lastDailyBoard = todayStr;
+    dailyBoardMeeting({ instructions: 'review today\'s work, set today\'s priorities, allocate today\'s budget.' })
+      .then(result => {
+        console.log(`[Daily Board] ${todayStr}: CEO executed daily meeting, result: ${result ? 'success' : 'error'}`);
+      }).catch(err => {
+        console.error(`[Daily Board] ${todayStr} error:`, err.message);
+      });
+  }
+}, 86400000); // 24小时
+
+// 手动触发每日板会（可被定时任务或运维调用）
+app.post('/api/ai/daily-board', async (req, res) => {
   try {
-    const result = await weeklyBoardMeeting(req.body || {});
+    const result = await dailyBoardMeeting(req.body || {});
     res.json({ success: true, result });
   } catch (e) {
     res.status(500).json({ success: false, error: e.message });

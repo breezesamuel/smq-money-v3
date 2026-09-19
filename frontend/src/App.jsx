@@ -1033,6 +1033,13 @@ function App() {
         {view === 'catalog' && <p className="tagline">{String(t.tagline).replace('300+', (stats.total || 300) + '+')}</p>}
       </header>
 
+      <nav className="top-nav">
+        <button className={`nav-btn ${view === 'catalog' ? 'active' : ''}`} onClick={() => setView('catalog')}>🧰 {t.all}</button>
+        <button className={`nav-btn ${view === 'reward' ? 'active' : ''}`} onClick={() => setView('reward')}>🎁 {t.my_reward}</button>
+        <button className="nav-btn" onClick={() => window.location.href = '/arcade/'}>🕹️ {t.ai_games}</button>
+        <button className="nav-btn" onClick={() => setFbOpen(true)}>💬 {t.fb_btn}</button>
+      </nav>
+
       {view === 'catalog' && (
         <>
           <div className="search-bar">
@@ -1048,6 +1055,7 @@ function App() {
           <div className="reward-banner" onClick={() => setView('reward')}>
             <span>🎁 {t.my_reward}</span>
             <span className="reward-code">{referral.referralCode || 'AB12CD'}</span>
+            <span className="reward-share" onClick={(e) => { e.stopPropagation(); if (navigator.share) navigator.share({ title: t.brand, text: referralLink, url: referralLink }).catch(() => {}); else copyInvite() }}>📤</span>
             <span className="reward-arrow">›</span>
           </div>
 
@@ -1110,8 +1118,24 @@ function App() {
                 <button className="life-btn" onClick={() => setPayModal(current)}>💎 {t.lifetime} ¥{current.pricing?.lifetime}</button>
               </div>
             </div>
-            {result && <pre className="result-box">{result}</pre>}
+            {result && <pre className="result-box">{result}<button className="result-copy" onClick={() => { navigator.clipboard?.writeText(result); showToast('✓ ' + (lang === 'en' ? 'Copied' : (lang === 'ar' ? 'تم النسخ' : '已复制'))) }}>📋</button></pre>}
           </div>
+          {(() => {
+            const related = tools.filter(x => x.category === current.category && x.id !== current.id).slice(0, 8)
+            if (!related.length) return null
+            return (
+              <div className="related-box">
+                <div className="related-title">🔗 {lang === 'en' ? 'Related tools' : (lang === 'ar' ? 'أدوات ذات صلة' : '相关工具')}</div>
+                <div className="related-grid">
+                  {related.map(tool => (
+                    <button key={tool.id} className="related-chip" onClick={() => openTool(tool)}>
+                      {tool.name?.emoji || '🛠️'} {tool.name?.title}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )
+          })()}
         </div>
       )}
 
@@ -1146,6 +1170,15 @@ function App() {
             <div className="tier"><span>🤝🤝🤝</span>{t.tier_3}</div>
             <div className="tier"><span>🤝🤝🤝🤝🤝</span>{t.tier_5}</div>
             <div className="tier gold"><span>👑</span>{t.tier_10}</div>
+          </div>
+
+          <div className="unlocked-card">
+            <div className="unlocked-title">🔓 {lang === 'en' ? 'My unlocked tools' : (lang === 'ar' ? 'أدواتي المفتوحة' : '我已解锁的工具')}</div>
+            <div className="unlocked-count">{alwaysEnabled.size} <em>/ {stats.total || tools.length}</em></div>
+            <div className="unlocked-bar"><div className="unlocked-fill" style={{ width: `${Math.min((alwaysEnabled.size / (stats.total || tools.length)) * 100, 100)}%` }} /></div>
+            <button className="sub-btn" style={{ width: '100%', marginTop: 14 }} onClick={() => { const t0 = tools[0]; if (t0) { setPayModal({ id: t0.id, name: { title: lang === 'en' ? 'All-Access Subscription' : (lang === 'ar' ? 'اشتراك كامل' : '全站订阅'), pain: lang === 'en' ? 'Unlock all tools once' : (lang === 'ar' ? 'افتح كل الأدوات' : '一次解锁全部工具') }, pricing: t0.pricing }) } else { setView('catalog') } }}>
+              {alwaysEnabled.size ? (lang === 'en' ? 'Unlock ALL tools' : '解锁全部') : (lang === 'en' ? 'Upgrade to unlock all' : '升级解锁全部')}
+            </button>
           </div>
         </div>
       )}
@@ -1182,7 +1215,7 @@ function App() {
                     ))}
                   </div>
                 })()}
-                <button onClick={() => { setPayType('subscription'); doPay('subscription') }}>{t.pay_now}</button>
+                <button onClick={() => { doPay('subscription') }}>{t.pay_now}</button>
               </div>
               <div className="pay-opt life">
                 <div className="pay-name">💎 {t.lifetime}</div>

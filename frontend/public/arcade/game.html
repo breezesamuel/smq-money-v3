@@ -45,6 +45,10 @@
     .desc-box p { color: var(--muted); font-size: 14px; line-height: 1.8; }
     .more { display: flex; gap: 10px; justify-content: center; margin-top: 24px; flex-wrap: wrap; }
     .more a { color: var(--accent); text-decoration: none; font-size: 14px; border: 1px solid #2d3450; padding: 6px 14px; border-radius: 99px; }
+    .tool-row { display: flex; flex-wrap: wrap; gap: 8px; }
+    .tool-chip { font-size: 12px; padding: 5px 12px; border-radius: 99px; border: 1px solid #2d3450; background: #1a1f33; color: #b9c4ef; cursor: pointer; }
+    .tool-chip:hover { border-color: var(--accent); color: #fff; }
+    .tool-chip b { color: var(--accent); }
   </style>
 </head>
 <body>
@@ -54,6 +58,8 @@
     <a href="/arcade/">🕹️ 街机游戏中心</a>
     <span class="sep">›</span>
     <span class="title" id="crumbTitle">加载中...</span>
+    <span style="flex:1"></span>
+    <a href="/?ref=arcade" style="font-size:13px;">🎁 邀请赚奖</a>
   </div>
 
   <div class="container">
@@ -107,6 +113,11 @@
     <div class="desc-box">
       <h3>💡 冲榜心得</h3>
       <p id="insightBox" style="color:var(--muted);font-size:14px;line-height:1.8;">加载中...</p>
+    </div>
+
+    <div class="desc-box">
+      <h3>🧰 相关小工具（痛点工具箱）</h3>
+      <div class="tool-row" id="toolRow"><span style="color:var(--muted);font-size:13px;">加载中...</span></div>
     </div>
 
     <div class="more">
@@ -303,6 +314,35 @@
 
       loadLeaderboard();
       loadInsight();
+      loadRelatedTools();
+
+      // 互联：游戏页 → 工具站相关工具推荐
+      async function loadRelatedTools() {
+        const row = document.getElementById('toolRow');
+        try {
+          const kw = (game.theme || game.title || '').replace(/游戏|拼图|蛇|跑酷|棋牌|卡牌|消除|射击|竞技/gi, '');
+          const url = '/api/tools?lang=zh&per=30' + (kw ? '&q=' + encodeURIComponent(kw) : '&cat=ai_games');
+          const r = await fetch(url);
+          const d = await r.json();
+          const list = (d.tools || []).slice(0, 6);
+          if (!list.length) throw new Error('empty');
+          row.innerHTML = '';
+          list.forEach(t => {
+            const span = document.createElement('span');
+            span.className = 'tool-chip';
+            span.innerHTML = '<b>' + (t.name && t.name.emoji || '🧰') + '</b> ' + (t.name && t.name.title || t.slug);
+            span.onclick = () => { location.href = '/?tool=' + encodeURIComponent(t.slug); };
+            row.appendChild(span);
+          });
+          const more = document.createElement('span');
+          more.className = 'tool-chip';
+          more.textContent = '＋ 全部工具';
+          more.onclick = () => { location.href = '/'; };
+          row.appendChild(more);
+        } catch (e) {
+          row.innerHTML = '<a href="/" style="color:var(--accent);font-size:13px;">浏览全部 520+ 工具 →</a>';
+        }
+      }
     })();
   </script>
 </body>

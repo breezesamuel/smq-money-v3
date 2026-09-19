@@ -4,8 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>街机游戏中心 Arcade | 1000+ 小游戏 · AI 娱乐中心</title>
-  <meta name="description" content="1000+ 在线街机小游戏，Phaser/Pixi/Three 等 40+ 引擎 × 14 题材，前10分钟免费，¥0.2/分钟。AI 娱乐中心。" />
-  <meta name="keywords" content="街机游戏,在线小游戏,AI娱乐,arcade,Phaser,免费游戏,贪吃蛇,拼图,跑酷" />
+  <meta name="description" content="1000+ 在线街机小游戏，Phaser/Pixi/Three 等 40+ 引擎 × 14 题材，每游戏免费玩 10 分钟。与 520+ 痛点工具箱互联，游戏娱乐 + 工具提效一站通。AI 娱乐中心。" />
+  <meta name="keywords" content="街机游戏,在线小游戏,AI娱乐,arcade,Phaser,免费游戏,贪吃蛇,拼图,跑酷,痛点工具箱" />
   <link rel="canonical" href="https://smq-v3.vercel.app/arcade/" />
   <meta property="og:type" content="website" />
   <meta property="og:title" content="街机游戏中心 Arcade" />
@@ -45,13 +45,18 @@
     .lb-row:nth-child(n+3) .lb-score { color: var(--accent); }
     .lb-empty { padding: 18px; text-align: center; color: var(--muted); font-size: 13px; }
     .lb-insight { margin-top: 14px; background: #151a2c; border: 1px solid #232a44; border-radius: 14px; padding: 16px; color: #b9c4ef; font-size: 14px; line-height: 1.9; }
+    .toplinks { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-bottom: 18px; }
+    .toplink { padding: 7px 14px; border-radius: 99px; border: 1px solid #2d3450; background: #161a2b; color: #b9c4ef; cursor: pointer; font-size: 13px; text-decoration: none; }
+    .toplink:hover { border-color: var(--accent); color: #fff; }
+    .toplink.gold { border-color: #7a5c1e; background: #2a2111; color: #f0c674; }
     * { color-scheme: dark; }
   </style>
 </head>
 <body>
   <header>
     <h1>🕹️ 街机游戏中心</h1>
-    <p>40+ 引擎 × 14 题材 = 1000+ 小游戏 · 前10分钟免费 · ¥0.2/分钟</p>
+    <p>40+ 引擎 × 14 题材 = 1000+ 小游戏 · 每游戏免费玩 10 分钟</p>
+    <div class="toplinks" id="toplinks"></div>
   </header>
   <div class="search">
     <input id="q" placeholder="搜索游戏... 如：蛇、拼图、跑酷" />
@@ -69,7 +74,7 @@
   </div>
 
   <footer>
-    <a href="/">← 返回痛点工具箱</a> · 计费：前10分钟免费，之后 ¥0.2/分钟，邀请AI +10分钟
+    <a href="/">← 返回痛点工具箱（520+ 免费小工具）</a> · <a href="/?ref=arcade" class="gold">🎁 邀请好友赚奖励</a>
   </footer>
 
   <script src="/arcade/arcade-data.js"></script>
@@ -146,6 +151,24 @@
     }
     loadTop();
     loadInsight();
+
+    // 互联导航：工具站 / 邀请 / 反馈
+    (function () {
+      const links = [
+        { label: '🧰 返回工具站', href: '/' },
+        { label: '🎁 邀请好友赚奖励', href: '/?ref=arcade' },
+        { label: '⚡ 用工具提效', href: '/?cat=worker' },
+        { label: '💬 反馈建议', href: '/', fn: () => { try { localStorage.setItem('fb_open', '1'); location.href = '/'; } catch (e) {} } },
+      ];
+      const el = document.getElementById('toplinks');
+      links.forEach(l => {
+        const a = document.createElement('a');
+        a.className = 'toplink' + (l.gold ? ' gold' : '');
+        a.textContent = l.label;
+        if (l.fn) a.onclick = l.fn; else a.href = l.href;
+        el.appendChild(a);
+      });
+    })();
   </script>
 </body>
 </html>

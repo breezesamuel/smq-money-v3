@@ -851,9 +851,22 @@ function App() {
       const url = `${API}/api/tools?lang=${lang}&per=1000`
       const r = await fetch(url)
       const d = await r.json()
-      setTools(d.tools || [])
+      const list = d.tools || []
+      setTools(list)
       setStats(d.stats || {})
       setCategories(d.categories || {})
+      // 互联 URL 参数：?tool=slug 直达工具页；?cat=worker 预选分类
+      try {
+        const sp = new URLSearchParams(location.search)
+        const toolSlug = sp.get('tool')
+        const catParam = sp.get('cat')
+        if (catParam) setCategory(catParam)
+        if (toolSlug) {
+          const hit = list.find(t => t.slug === toolSlug)
+          if (hit) openTool(hit)
+          else if (list.length) setView('tool')
+        }
+      } catch (e) { console.error(e) }
     } catch (e) { console.error(e) }
   }
 

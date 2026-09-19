@@ -305,7 +305,7 @@ function runTool(tool, input, lang) {
     return '请输入：贷款万元 年限（如 200 30）'
   }
   // ====== 2026-09 新增批量确定性工具（真实计算，零 AI 成本） ======
-  if (slug.includes('tip-calculator') || slug.includes('小费') || (slug.includes('tip') && !slug.includes('jar'))) {
+  if (slug.includes('tip-calculator') || slug.includes('小费') || (slug.includes('tip') && !slug.includes('jar') && !slug.includes('parenting'))) {
     const nums = txt.match(/\d+(\.\d+)?/g)
     const bill = nums ? parseFloat(nums[0]) : 100
     const pct = nums && nums.length > 1 ? parseFloat(nums[1]) : 15
@@ -540,7 +540,7 @@ function runTool(tool, input, lang) {
     return `🚨 急救速查：\n120急救 / 110报警 / 119火警\n心脏骤停：立即CPR（按压100-120次/分，深度5-6cm）+ AED\n气道梗阻：海姆立克法\n出血：压迫止血+抬高\n烧伤：冷水冲15分钟，勿涂牙膏\n误食中毒：保留呕吐物样本`
   }
   // ====== 2026-09 第二批确定性工具（worker 高频） ======
-  if (slug.includes('regex-check') || slug.includes('正则') || slug.includes('regex')) {
+  if (slug.includes('regex-check') || slug.includes('正则') || (slug.includes('regex') && !slug.includes('battle'))) {
     if (txt) {
       const parts = txt.split(/[|｜]/)
       if (parts.length >= 2) {
@@ -603,6 +603,150 @@ function runTool(tool, input, lang) {
   if (slug.includes('freelance') || slug.includes('自由职业') || slug.includes('报价')) {
     const n = parseFloat(txt.replace(/[^\d.]/g, '')) || 500
     return `💰 自由职业报价参考：\n时薪 ¥${n} → 日薪 ≈ ¥${n * 8} → 月（按21工作日）≈ ¥${n * 8 * 21}\n建议：按项目报价时上浮20-30%保险费与沟通成本\n（老客/打包价可给5-10%优惠但保持底线）`
+  }
+  // ====== 2026-09 第四批确定性工具（life 计算 + ai_games 纯逻辑/概率） ======
+  if (slug.includes('recipe-scale') || slug.includes('食谱缩放')) {
+    const nums = txt.match(/\d+(\.\d+)?/g)
+    if (nums && nums.length >= 2) {
+      const orig = parseFloat(nums[0]), target = parseFloat(nums[1])
+      return `🍳 食谱缩放：原${orig}人份 → ${target}人份\n缩放系数 = ${(target / orig).toFixed(2)}×\n所有食材量 × ${(target / orig).toFixed(2)} 即可\n（示例：100g 面粉 → ${(100 * target / orig).toFixed(0)}g）`
+    }
+    return '请输入：原份数 新份数（如 2 4）'
+  }
+  if (slug.includes('macro-calc') || slug.includes('宏量') || slug.includes('营养素')) {
+    const nums = txt.match(/\d+(\.\d+)?/g)
+    const g = nums ? parseFloat(nums[0]) : 1500
+    return `🥗 目标热量 ${g} kcal 的宏量分配（默认 4:3:3）：\n碳水40% = ${(g * 0.4 / 4).toFixed(0)}g（×4kcal）\n蛋白30% = ${(g * 0.3 / 4).toFixed(0)}g\n脂肪30% = ${(g * 0.3 / 9).toFixed(0)}g（×9kcal）\n增肌可调 5:3:2，减脂可调 4:4:2`
+  }
+  if (slug.includes('dose-calc') || slug.includes('剂量')) {
+    const n = parseFloat(txt.replace(/[^\d.]/g, '')) || 0
+    if (n > 0) return `💊 儿童常用剂量估算（布洛芬10mg/kg、对乙酰氨基酚15mg/kg）：\n体重 ${n}kg：布洛芬单次 ≈ ${(n * 10).toFixed(0)}mg\n对乙酰氨基酚单次 ≈ ${(n * 15).toFixed(0)}mg\n⏰ 间隔：退烧药4-6小时/日≤4次\n⚠️ 仅为参考，见医嘱为准`
+    return '请输入儿童体重 kg（如 15）'
+  }
+  if (slug.includes('deposit') || slug.includes('存款') || slug.includes('复利')) {
+    const nums = txt.match(/\d+(\.\d+)?/g)
+    if (nums && nums.length >= 3) {
+      const p = parseFloat(nums[0]), r = parseFloat(nums[1]) / 100, y = parseFloat(nums[2])
+      const total = p * Math.pow(1 + r / 12, 12 * y)
+      return `🏦 本金 ¥${p} / 年利率${(r * 100).toFixed(1)}% / ${y}年\n按月复利终值 ≈ ¥${total.toLocaleString(undefined, { maximumFractionDigits: 0 })}\n利息 ≈ ¥${(total - p).toLocaleString(undefined, { maximumFractionDigits: 0 })}`
+    }
+    return '请输入：本金 年利率(%) 年数（如 50000 3 5）'
+  }
+  if (slug.includes('rent-calc') || slug.includes('房租') || slug.includes('租金')) {
+    const n = parseFloat(txt.replace(/[^\d.]/g, '')) || 0
+    if (n > 0) return `🏠 月薪 ¥${n.toLocaleString()} 的可承受房租：\n建议 ≤ 月收入30% = ¥${(n * 0.3).toLocaleString(undefined, { maximumFractionDigits: 0 })}\n合理上限参考：¥${(n * 0.35).toLocaleString(undefined, { maximumFractionDigits: 0 })}（含水电更稳）`
+    return '请输入月薪（如 15000）'
+  }
+  if (slug.includes('fuel-cost') || slug.includes('油耗')) {
+    const nums = txt.match(/\d+(\.\d+)?/g)
+    if (nums && nums.length >= 2) {
+      const km = parseFloat(nums[0]), l = parseFloat(nums[1])
+      return `⛽ 行驶 ${km}km / 百公里油耗${l}L\n耗油 ≈ ${(km * l / 100).toFixed(1)}L\n按 8元/L ≈ ¥${(km * l / 100 * 8).toFixed(0)}`
+    }
+    return '请输入：公里数 百公里油耗L（如 300 7.5）'
+  }
+  if (slug.includes('parking-cost') || slug.includes('停车费')) {
+    const nums = txt.match(/\d+(\.\d+)?/g)
+    if (nums && nums.length >= 2) {
+      const hrs = parseFloat(nums[0]), rate = parseFloat(nums[1])
+      return `🅿️ 停车 ${hrs} 小时 × ¥${rate}/小时\n费用 ≈ ¥${(hrs * rate).toFixed(2)}\n（跨日夜/封顶价以实际停车场为准）`
+    }
+    return '请输入：小时数 单价（如 3 10）'
+  }
+  if (slug.includes('ev-charge') || slug.includes('充电')) {
+    const nums = txt.match(/\d+(\.\d+)?/g)
+    const kwh = nums ? parseFloat(nums[0]) : 50
+    return `🔌 家用充电 ${kwh}kWh（谷电0.3元/度）：\n电费 ≈ ¥${(kwh * 0.3).toFixed(2)}\n公共桩(1.2元/度) ≈ ¥${(kwh * 1.2).toFixed(2)}\n按1元车电≈${(kwh / 10).toFixed(0)}km 计通勤`
+  }
+  if (slug.includes('shipping-cost') || slug.includes('运费')) {
+    const n = parseFloat(txt.replace(/[^\d.]/g, '')) || 1
+    return `📦 包裹 ${n}kg 国内快递参考：\n首重1kg：¥8-12（同城）\n续重：¥2-5/kg\n${n <= 1 ? '同城¥8·跨省¥10-15' : `估算 ¥${(10 + (n - 1) * 4).toFixed(0)}-${(18 + (n - 1) * 6).toFixed(0)}`}\n大件/超重走物流或比价平台更划算`
+  }
+  if (slug.includes('temp-convert') || slug.includes('温度转换')) {
+    const n = parseFloat(txt.replace(/[^\d.\-]/g, ''))
+    if (!isNaN(n)) return `🌡 ${n}°C = ${(n * 9 / 5 + 32).toFixed(1)}°F\n= ${(n + 273.15).toFixed(1)}K\n华氏转摄氏：(°F-32)×5/9`
+    return '请输入摄氏温度（如 25）'
+  }
+  if (slug.includes('anniversary') || slug.includes('纪念日')) {
+    const m = txt.match(/\d{4}[\/\-.]\d{1,2}[\/\-.]\d{1,2}/)
+    if (m) {
+      const d = new Date(m[0].replace(/[\/.]/g, '-')), now = new Date(), start = new Date(d)
+      let years = now.getFullYear() - d.getFullYear()
+      if (now.getMonth() < d.getMonth() || (now.getMonth() === d.getMonth() && now.getDate() < d.getDate())) years--
+      const days = Math.round((now - start) / 86400000)
+      return `💝 ${m[0]} → 今天已 ${days} 天（${years} 年）\n下一次 ${years + 1} 周年纪念日：${d.getMonth() + 1}月${d.getDate()}日`
+    }
+    return '请输入纪念日（如 2020-05-20）'
+  }
+  if (slug.includes('holiday-diff') || slug.includes('节日')) {
+    return `🎉 快速节日速查：\n2027年春节：2027-02-06\n2026年中秋：2026-09-25\n元旦/劳动节/国庆按公历\n（具体放假安排以国务院通知为准）`
+  }
+  if (slug.includes('credit-date') || slug.includes('还款日')) {
+    const n = parseInt(txt.replace(/[^\d]/g, '')) || null
+    return `💳 信用卡还款日建议：\n⚙ 出账日后 18-20 天为还款日\n${n ? `若出账日=${n}号，建议还款日=${Math.min(n + 18, 28)}号` : ''}\n技巧：出账日当天消费最晚还款·账单日前还款免息期最长`
+  }
+  if (slug.includes('naptime') || slug.includes('小睡')) {
+    return `😴 小睡策略（NASA 建议 26 分钟）：\n20分钟：快速恢复精力（不易昏沉）\n26分钟：最佳性价比\n90分钟：完整浅REM周期\n超过45分钟易陷入深睡眠反应迟钝`
+  }
+  if (slug.includes('coffee') && !slug.includes('quiz') || slug.includes('咖啡因')) {
+    return `☕ 咖啡因半衰期约5小时：\n8:00 喝咖啡 → 13:00 体内还剩一半\n睡前6小时停止摄入咖啡因\n睡前4小时避免浓茶/可乐/能量饮料\n（个人耐受差异：敏感者更早停）`
+  }
+  if (slug.includes('pet-food') || slug.includes('宠物食')) {
+    const n = parseFloat(txt.replace(/[^\d.]/g, '')) || 10
+    return `🍖 宠物每日喂食量估算：\n犬猫每日热量 ≈ 体重(kg)^0.75 × 系数（幼年×2 / 成年×1.2）\n${n}kg → 成年基础需约 ${Math.round(Math.pow(n, 0.75) * 70 * 1.2)} kcal\n约等于 ${(Math.pow(n, 0.75) * 1.4).toFixed(0)}g 优质主粮/日\n（按包装袋指引调整，幼犬孕猫适当增加）`
+  }
+  if (slug.includes('vaccine') || slug.includes('接种') || slug.includes('疫苗')) {
+    return `💉 宝宝疫苗接种时间轴（中国）：\n出生：乙肝1 + 卡介苗\n1月：乙肝2\n2月：脊灰1\n3月：百白破1 + 脊灰2\n4月：百白破2\n5月：百白破3\n6月：乙肝3 + 流脑AC1\n8月：麻疹1 + 乙脑1\n按接种本预约即可`
+  }
+  if (slug.includes('iron-temp') || slug.includes('熨烫')) {
+    return `👔 熨烫温度速查：\n丝/羊毛：低温 110-150°C（垫布防光）\n棉：中温 150-200°C（喷水）\n麻：高温 200-230°C\n化纤：低温 110°C 以下\n🔴 熨斗设定对应：·低温 ··中温 ···高温，随標籤而选`
+  }
+  // ai_games 纯逻辑/概率
+  if (slug.includes('coin-flip') || slug.includes('掷硬币')) {
+    const r = Math.random() < 0.5
+    return `🪙 掷硬币结果：${r ? '正面' : '反面'}\n（真实随机：50%/50%）${r ? '🎉' : '✨'}`
+  }
+  if (slug.includes('dice-roller') || slug.includes('掷骰子')) {
+    let sides = 6, count = 1
+    const c = txt.match(/^(\d+)\s*d/i)
+    if (txt.trim() !== '') {
+      const cm = txt.match(/^(\d+)\s*d/i)
+      const sm = txt.match(/d\s*(\d+)/i)
+      if (cm) count = parseInt(cm[1])
+      if (sm) sides = parseInt(sm[1])
+      else if (/^d\s*(\d+)/i.test(txt.trim())) { count = 1; sides = parseInt(txt.match(/^d\s*(\d+)/i)[1]) }
+    }
+    const rolls = []
+    for (let i = 0; i < Math.max(count, 1); i++) rolls.push(Math.floor(Math.random() * sides) + 1)
+    return `🎲 ${count} 个 d${sides}：${rolls.join(' + ')} = ${rolls.reduce((a, b) => a + b, 0)}`
+  }
+  if (slug.includes('rock-paper') || slug.includes('石头剪刀布')) {
+    const u = txt.trim().toLowerCase()
+    const choices = ['石头', '剪刀', '布']
+    const mapEn = { rock: 0, paper: 1, scissors: 2 }
+    let p = u === '石头' || u === 'rock' || u === 'r' ? 0 : u === '布' || u === 'paper' || u === 'p' ? 1 : u === '剪刀' || u === 'scissors' || u === 's' ? 2 : null
+    if (p === null) return '出拳：石头/剪刀/布（或 rock/paper/scissors）'
+    const c = Math.floor(Math.random() * 3)
+    const verdict = p === c ? '🤝 平局' : (p === 0 && c === 2) || (p === 1 && c === 0) || (p === 2 && c === 1) ? '🏆 你赢了！' : '🤖 AI 赢了'
+    return `🪨✂️📄 你出 ${choices[p]}，AI 出 ${choices[c]}\n${verdict}`
+  }
+  if (slug.includes('monty') || slug.includes('三门')) {
+    return `🚪 三门问题：\n规则：3门后1辆车2只羊，你先选1门，主持人从剩余2门中打开1只羊那扇，你换门吗？\n答：换！不换中奖率1/3，换则2/3\n直觉反直觉但数学正确，演示即可`
+  }
+  if (slug.includes('birthday-paradox') || slug.includes('生日悖论')) {
+    const n = parseInt(txt.replace(/[^\d]/g, '')) || 23
+    const p = n < 1 ? 0 : Math.round((1 - Math.exp(-n * (n - 1) / (2 * 365))) * 100)
+    return `🎂 生日悖论：${n} 人中有两人同生日的概率 ≈ ${p}%\n${n >= 50 ? '50人时已达 97%！' : n >= 30 ? '30人时已超 70%' : '23人时约 50%'}\n数学：P=1-e^(-n(n-1)/730)`
+  }
+  if (slug.includes('lottery') || slug.includes('彩票')) {
+    return `🎰 彩票中奖概率提醒：\n双色球头奖：1/17,720,000 ≈ 0.0000056%\n大乐透头奖：1/21,420,000\n被雷劈概率：1/1,000,000\n⚠️ 娱乐性质：每次花费控制在50元内，别指望中奖致富`
+  }
+  if (slug.includes('poker-odds') || slug.includes('德州')) {
+    const outs = parseInt(txt.replace(/[^\d]/g, '')) || 9
+    return `🃏 德州扑克补牌概率（outs法）：\n你有 ${outs} 个 outs：\n转牌前命中 ≈ ${(outs / 47 * 100).toFixed(0)}%\n河牌前（2张待发）≈ ${(1 - Math.pow(1 - outs / 47, 2)) * 100 | 0}%\n口诀：outs×2%≈下一张，×4%≈余下两张\n若底池赔率 < 命中率即值得跟`
+  }
+  if (slug.includes('typing-speed') || slug.includes('打字')) {
+    return `⌨️ 打字速度健康自查：\n新手 50-80 字/分 · 熟练 80-120 · 专业 120+\n方法：正确的指法+高频字练习\n多练习即可稳步提升`
   }
   // 通用兜底：交给真实 AI 执行（POST /api/ai/tool/run）返回 null 标记
   const reversed = txt.split('').reverse().join('')

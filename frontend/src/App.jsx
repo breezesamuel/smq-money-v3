@@ -816,8 +816,8 @@ function App() {
   useEffect(() => {
     const base = '痛点工具箱 Pain Toolkit'
     const SEP = ' | '
-    let title = base + SEP + '300+ 小工具 + 1000+ 街机游戏'
-    let desc = '300+ 在线小工具解决每个具体的小痛点，1000+ 街机小游戏。前10分钟免费，¥0.2/分钟。'
+    let title = base + SEP + (stats.total || '300+') + ' 小工具 + 1000+ 街机游戏'
+    let desc = (stats.total || '300+') + ' 在线小工具解决每个具体的小痛点，1000+ 街机小游戏。每工具免费10次，订阅解锁全部。'
     let canonical = 'https://smq-v3.vercel.app/'
 
     if (view === 'tool' && current) {
@@ -844,11 +844,11 @@ function App() {
       document.head.appendChild(linkC)
     }
     linkC.setAttribute('href', canonical)
-  }, [view, current])
+  }, [view, current, stats.total])
 
   const fetchData = async () => {
     try {
-      const url = `${API}/api/tools?lang=${lang}&per=200`
+      const url = `${API}/api/tools?lang=${lang}&per=1000`
       const r = await fetch(url)
       const d = await r.json()
       setTools(d.tools || [])
@@ -1030,7 +1030,7 @@ function App() {
           <h1>🧰 {t.brand}</h1>
           {langSwitch}
         </div>
-        {view === 'catalog' && <p className="tagline">{t.tagline}</p>}
+        {view === 'catalog' && <p className="tagline">{String(t.tagline).replace('300+', (stats.total || 300) + '+')}</p>}
       </header>
 
       {view === 'catalog' && (
@@ -1053,7 +1053,7 @@ function App() {
 
           <div className="arcade-banner" onClick={() => window.location.href = '/arcade/'}>
             <span>🕹️ 街机游戏中心</span>
-            <span className="arcade-sub">1000+ 小游戏 · 前10分钟免费 · ¥0.2/分钟</span>
+            <span className="arcade-sub">1000+ 小游戏 · 每游戏免费10次 · 订阅解锁全部</span>
             <span className="reward-arrow">›</span>
           </div>
 
@@ -1151,7 +1151,7 @@ function App() {
       )}
 
       <footer className="footer">
-        {t.brand} · 300+ {t.tools_total} · 中 / EN / عربي
+        {t.brand} · {stats.total || '300+'} {t.tools_total} · 中 / EN / عربي
         <span className="fb-link" onClick={() => setFbOpen(true)}>· {t.fb_btn}</span>
       </footer>
 

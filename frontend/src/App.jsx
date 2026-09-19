@@ -232,7 +232,7 @@ function runTool(tool, input, lang) {
     return `输入时间戳 ${txt} = ${new Date(parseInt(txt) * 1000 || parseInt(txt)).toLocaleString()}`
   }
   // 生成类
-  if (slug.includes('password') || slug.includes('密码')) {
+  if ((slug.includes('password') || slug.includes('密码')) && !slug.includes('password-safe')) {
     const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*'
     let pwd = ''
     const len = 16
@@ -311,7 +311,7 @@ function runTool(tool, input, lang) {
     const pct = nums && nums.length > 1 ? parseFloat(nums[1]) : 15
     return `🧾 账单 ¥${bill.toFixed(2)} / 小费${pct}%\n小费额 = ¥${(bill * pct / 100).toFixed(2)}\n合计 = ¥${(bill * (1 + pct / 100)).toFixed(2)}`
   }
-  if (slug.includes('cost-split') || slug.includes('分摊') || slug.includes('AA')) {
+  if ((slug.includes('cost-split') || slug.includes('分摊') || slug.includes('AA')) && !slug.includes('receipt-split')) {
     const nums = txt.match(/\d+(\.\d+)?/g)
     if (nums && nums.length >= 2) {
       const total = parseFloat(nums[0]), people = parseFloat(nums[1])
@@ -748,6 +748,151 @@ function runTool(tool, input, lang) {
   if (slug.includes('typing-speed') || slug.includes('打字')) {
     return `⌨️ 打字速度健康自查：\n新手 50-80 字/分 · 熟练 80-120 · 专业 120+\n方法：正确的指法+高频字练习\n多练习即可稳步提升`
   }
+  // ====== 2026-09 第五批确定性工具（真实计算，零 AI 成本） ======
+  if (slug.includes('age-fine') || slug.includes('精确年龄')) {
+    const m = txt.match(/(19|20)\d{2}[年./-]?\d{1,2}[月./-]?\d{1,2}/)
+    if (m) {
+      const t = m[0].replace(/[年月.年\/-]/g, '-').replace(/[-]+/g, '-').replace(/^-|-$/g, '')
+      const p = t.split('-').map(Number)
+      const birth = new Date(p[0], p[1] - 1, p[2])
+      const now = new Date()
+      let age = now.getFullYear() - birth.getFullYear()
+      const mDiff = now.getMonth() - birth.getMonth()
+      if (mDiff < 0 || (mDiff === 0 && now.getDate() < birth.getDate())) age--
+      return `🎂 出生 ${m[0]}：\n周岁 ${age} 岁\n精确天数 ${Math.floor((now - birth) / 86400000)} 天\n虚岁 ${age + (now.getMonth() * 100 + now.getDate() < birth.getMonth() * 100 + birth.getDate() ? 2 : 1)}`
+    }
+    return '请输入出生日期（如 1995-06-20）'
+  }
+  if (slug.includes('speed-limit') || slug.includes('限速')) {
+    const nums = txt.match(/\d+/g)
+    if (nums && nums.length >= 2) {
+      const kmh = parseFloat(nums[0]), limit = parseFloat(nums[1])
+      const pct = kmh / limit * 100
+      let verdict
+      if (pct <= 100) verdict = '未超速，请保持 🟢'
+      else if (pct < 110) verdict = `超速 ${(pct - 100).toFixed(0)}%（10%以内）→ 警告不罚款`
+      else if (pct < 150) verdict = `超速 ${(pct - 100).toFixed(0)}%→ 罚款+扣3分`
+      else verdict = `超速 ${(pct - 100).toFixed(0)}% → 严重超速，罚款+扣6分以上`
+      return `🚗 车速 ${kmh} / 限速 ${limit}\n超速率 ${pct.toFixed(0)}%\n${verdict}`
+    }
+    return '请输入：当前车速 限速（如 120 100）'
+  }
+  if (slug.includes('tax-deduct') || slug.includes('个税')) {
+    const n = parseFloat(txt.replace(/[^\d.]/g, '')) || 12000
+    const taxable = n - 5000
+    let tax = 0
+    if (taxable > 0) tax = taxable <= 36000 ? taxable * 0.03 : taxable <= 144000 ? taxable * 0.1 - 2520 : taxable <= 300000 ? taxable * 0.2 - 16920 : taxable <= 420000 ? taxable * 0.25 - 31920 : taxable * 0.3 - 52920
+    const net = n - Math.max(tax, 0)
+    return `💼 月薪 ¥${n.toLocaleString()}（无专项附加）\n起征点抵扣 5000\n个税 ≈ ¥${Math.max(tax, 0).toFixed(0)}\n到手 ≈ ¥${Math.max(net, 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}\n\n专项附加参考：\n· 房贷/房租：¥1000-1500/月\n· 赡养老人：¥2000-3000/月\n· 子女教育：¥1000/孩/月\n· 继续教育：¥400/月`
+  }
+  if (slug.includes('med-reminder') || slug.includes('吃药') || slug.includes('用药') || slug.includes('服药')) {
+    const m = txt.match(/\d{1,2}[:：时]?\d{0,2}/g)
+    if (m && m.length) {
+      const times = m.slice(0, 6)
+      const label = txt.replace(/时间|间隔|次|药/g, '').trim() || '药物'
+      return `💊「${label}」用药提醒计划：\n${times.map((t, i) => `  ${i + 1}. ${t.replace('时', ':')} → ${['早餐后', '午餐后', '晚餐后', '睡前', '上午', '下午'][i % 6]}`).join('\n')}\n🔔 每日 ${times.length} 次 · 建议设置手机闹钟同步`
+    }
+    return '请输入服药时间（如 8:00 12:00 18:00 或 早中晚）'
+  }
+  if (slug.includes('commute') || slug.includes('通勤')) {
+    const nums = txt.match(/\d+(\.\d+)?/g)
+    if (nums && nums.length >= 2) {
+      const km = parseFloat(nums[0]), speed = parseFloat(nums[1])
+      const mins = km / speed * 60
+      const withWait = mins + 8
+      return `🚇 通勤 ${km}km / 均速 ${speed}km/h\n纯行驶 ≈ ${mins.toFixed(1)} 分钟\n含等车/步行 ≈ ${withWait.toFixed(0)} 分钟\n建议提前 ${Math.ceil(withWait + 10)} 分钟出门`
+    }
+    return '请输入：距离km 平均速度（如 12 30）'
+  }
+  if (slug.includes('school-calc') || slug.includes('学区')) {
+    const nums = txt.match(/\d+(\.\d+)?/g)
+    if (nums && nums.length >= 2) {
+      const lat1 = parseFloat(nums[0]), lon1 = parseFloat(nums[1]), lat2 = nums[2] ? parseFloat(nums[2]) : NaN
+      if (!isNaN(lat2)) {
+        const lon2 = parseFloat(nums[3] || '')
+        const R = 6371
+        const dLat = (lat2 - lat1) * Math.PI / 180, dLon = (lon2 - lon1) * Math.PI / 180
+        const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) ** 2
+        const dist = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+        return `🏫 两点直线距离 ≈ ${dist.toFixed(1)} km（步行测距约乘以1.3）\n参考：学校通常要求 3km 内对口（以当地政策为准）`
+      }
+      return `📍 经纬度(${nums[0]}, ${nums[1]})\n请再输入学校的坐标：纬度 经度（如 39.90 116.40）`
+    }
+    return '请输入：家的纬度 经度 学校纬度 经度（如 39.90 116.40 39.95 116.50）'
+  }
+  if (slug.includes('move-checklist') || slug.includes('搬家')) {
+    const rooms = txt.match(/单间|一居|二居|两居|三居|整租/g)
+    const room = rooms ? rooms[0] : '普通户型'
+    const budget = txt.match(/\d{4,}/g)
+    const b = budget ? budget[0] : 3000
+    return `📦 ${room}搬家清单（预算约¥${b}）：\n▸ 预约：搬家平台/货拉拉 提前2天，选「不计时」档即可省钱\n▸ 打包：纸箱×15、气泡膜、封箱带、标签笔\n▸ 易碎：餐具杯具毛巾包裹，柜子衣物原抽屉搬\n▸ 电器：冰箱清空散热、洗衣机排水排空\n▸ 贵重：证件/首饰/现金随身带\n▸ 结算：当场核对件数，破损现场拍照索赔`
+  }
+  if (slug.includes('visa') || slug.includes('签证')) {
+    const country = txt.trim() || '（目标国）'
+    return `🛂 ${country}签证材料自查单：\n□ 护照（有效期>6个月，空白页≥2页）\n□ 照片（白底 35×45mm，近6个月，不修图）\n□ 申请表（如实填写，联系方式真实）\n□ 在职证明（抬头纸、盖章、准假时间清晰）\n□ 银行流水（近3-6个月，余额建议5万+）\n□ 行程单（机酒订单与行程日期一致）\n□ 户口本/身份证复印件\n⚠ 申根/美签需面试，材料真实千万勿造假`
+  }
+  if (slug.includes('check-in') || slug.includes('值机')) {
+    const nums = txt.match(/\d{1,2}[:时]?\d{0,2}/g)
+    const t = nums ? nums[0] : '[起飞时间]'
+    const clean = t.replace('时', ':')
+    const dep = parseFloat(clean.replace(':', '.')) || 12
+    const h = Math.floor(dep), m = Math.round((dep - h) * 100)
+    const depDate = new Date(); depDate.setHours(h, m, 0, 0)
+    const checkStart = new Date(depDate.getTime() - 24 * 3600000)
+    const close = new Date(depDate.getTime() - 45 * 60000)
+    return `✈️ 航班起飞 ${t}：\n□ 线上值机：${checkStart.getMonth() + 1}月${checkStart.getDate()}日 起可办（提前24小时）\n□ 值机截止：当日起飞前 45 分钟\n□ 登机截止：起飞前 20 分钟关闭\n⚠ 国际航班建议提前 3 小时到机场，国内 2 小时`
+  }
+  if (slug.includes('leftover') || slug.includes('剩菜')) {
+    const food = txt.trim() || '[剩菜]'
+    return `🍳「${food}」剩菜改造创意：\n1. 拌饭/烩饭：剩菜+米饭+鸡蛋 一锅香\n2. 卷饼/三明治：夹入饼皮或吐司，配酱\n3. 暖面汤：剩菜做浇头，下面条馄饨\n4. 烤箱焗：剩鸡肉/蔬菜+芝士 焗 5 分钟\n5. 炒饭：米饭+剩菜碎+生抽大火快炒\n⚠ 绿叶菜冷藏不超过 24h，海鲜隔日勿食`
+  }
+  if (slug.includes('cooking-timer') || slug.includes('灶')) {
+    const m = txt.match(/(\d+\s*(分|min|分钟)?)/g)
+    const items = txt.split(/[,，、;；\s]+/).filter(s => /\d/.test(s)).slice(0, 4)
+    if (items.length) {
+      return `⏲ 多灶定时方案：\n${items.map((it, i) => `  灶${i + 1}: ${it} → ${new Date(Date.now() + ((parseFloat(it)) || 0) * 60000).toLocaleTimeString('zh', { hour: '2-digit', minute: '2-digit' })}`).join('\n')}\n💡 灶1火力最大先放慢菜，灶2炖煮最后收汁`
+    }
+    return '请输入各灶时间（如 10分钟 20分钟 8分钟）'
+  }
+  if (slug.includes('receipt-split') || slug.includes('小票') || slug.includes('分摊')) {
+    const nums = txt.match(/\d+(\.\d+)?/g)
+    if (nums && nums.length >= 2) {
+      const total = parseFloat(nums[0]), people = parseFloat(nums[1])
+      const per = total / people
+      return `🧾 小票合计 ¥${total.toFixed(2)} / 均分 ${people} 人\n每人 = ¥${per.toFixed(2)}\n方式：一人垫付，其余转账 ¥${per.toFixed(2)}`
+    }
+    return '请输入：总额 人数（如 586.5 4）'
+  }
+  if (slug.includes('posture') || slug.includes('坐姿')) {
+    return `🪑 坐姿防驼小贴士：\n· 屏幕中心与视线平齐（约一臂远）\n· 背靠椅背，腰后加腰靠，双脚平放\n· 肘部 90°，手腕不悬空\n· 每 45 分钟起身活动 2 分钟\n· 20-20-20 法则：每20分钟看20英尺外20秒`
+  }
+  if (slug.includes('package-tracking') || slug.includes('包裹') || slug.includes('快递')) {
+    const kws = txt.split(/[,，、\s]+/).filter(Boolean).slice(0, 8)
+    if (kws.length) {
+      return `📦 聚合查询：\n${kws.map((k, i) => `  ${i + 1}. ${k} — 请复制单号到快递官网/APP 查询`).join('\n')}\n渠道建议：顺丰/京东官网直达，中通/圆通/韵达用「菜鸟」App 聚合最省事`
+    }
+    return '请输入要追踪的快递单号（多个用逗号分隔）'
+  }
+  if (slug.includes('invoice') || slug.includes('发票')) {
+    const code = txt.trim()
+    if (/^\d{8,}$/.test(code.replace(/\s/g, ''))) {
+      return `🧾 发票号码 ${code.replace(/\s/g, '')}：\n建议登录国家税务总局全国增值税发票查验平台核对：\n① 发票代码（10-12位）\n② 发票号码（8位）\n③ 开票日期，不含税金额\n⚠ 快速自查：代码位数不对 / 税率与货物不符 / 备注异常 → 大概率异常`
+    }
+    return `🧾 发票真伪自查清单：\n· 电子票验证：全国增值税发票查验平台\n· 看代码位数：老发票10位，数电票20位\n· 核对税率：13%/9%/6%/3% 是否与开票方匹配\n· 确认查验平台为 gov.cn 官方域名\n请输入发票号码可针对性核对`
+  }
+  if (slug.includes('password-safe') || slug.includes('密码强度')) {
+    const pwd = txt.trim()
+    if (!pwd) return '请输入要检测的密码'
+    let score = 0
+    if (pwd.length >= 8) score++
+    if (pwd.length >= 12) score++
+    if (/[a-z]/.test(pwd) && /[A-Z]/.test(pwd)) score++
+    if (/\d/.test(pwd)) score++
+    if (/[^a-zA-Z0-9]/.test(pwd)) score++
+    const level = score >= 4 ? '💪 强' : score >= 2 ? '⚠️ 中等' : '🔴 弱'
+    return `🔐 密码「${'•'.repeat(Math.min(pwd.length, 16))}」\n长度 ${pwd.length} 位 · 复杂度评分 ${score}/5\n强度：${level}\n建议：${score < 4 ? '混合大小写+数字+符号，且不少于12位' : '此密码不错，但仍建议不同网站用不同密码'}`
+  }
+
   // 通用兜底：交给真实 AI 执行（POST /api/ai/tool/run）返回 null 标记
   const reversed = txt.split('').reverse().join('')
   void reversed

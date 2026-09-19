@@ -91,7 +91,7 @@ function generateRss() {
       <title>${title} — 街机小游戏</title>
       <link>${BASE}/arcade/${g.id}</link>
       <guid>${BASE}/arcade/${g.id}</guid>
-      <description>${pain} — ${g.engineName} 引擎 + ${g.theme} 题材，前10分钟免费。</description>
+      <description>${pain} — ${g.engineName} 引擎 + ${g.theme} 题材，每游戏免费玩 10 分钟。</description>
       <pubDate>${pubDate}</pubDate>
     </item>`);
   });
@@ -101,7 +101,7 @@ function generateRss() {
   <channel>
     <title>smq-v3 痛点工具箱 &amp; 街机游戏中心</title>
     <link>${BASE}</link>
-    <description>300+ 在线小工具 + 1000+ 街机小游戏，AI 娱乐中心。前10分钟免费，¥0.2/分钟。</description>
+    <description>520+ 在线小工具 + 1000+ 街机小游戏，AI 娱乐中心。每工具免费试用 10 次，订阅解锁全部。</description>
     <language>zh-cn</language>
     <lastBuildDate>${pubDate}</lastBuildDate>
 ${items.join('\n')}
@@ -140,7 +140,7 @@ function siteStructuredData() {
     name: '痛点工具箱 Pain Toolkit',
     alternateName: 'smq-v3',
     url: BASE,
-    description: '300+ 在线小工具 + 1000+ 街机小游戏。前10分钟免费，¥0.2/分钟。'
+    description: '520+ 在线小工具 + 1000+ 街机小游戏。每工具免费试用 10 次，订阅解锁全部。'
   };
 }
 

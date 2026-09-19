@@ -84,7 +84,7 @@ games.slice(0, 20).forEach(g => {
       <title>${title} — 街机小游戏</title>
       <link>${BASE}/arcade/${g.id}.html</link>
       <guid>${BASE}/arcade/${g.id}.html</guid>
-      <description>${pain} — ${g.engineName} 引擎 + ${g.theme} 题材，前10分钟免费 ¥0.2/分钟。</description>
+      <description>${pain} — ${g.engineName} 引擎 + ${g.theme} 题材，每游戏免费玩 10 分钟。</description>
       <pubDate>${pubDate}</pubDate>
     </item>`);
 });
@@ -93,7 +93,7 @@ const rss = `<?xml version="1.0" encoding="UTF-8"?>
   <channel>
     <title>smq-v3 痛点工具箱 &amp; 街机游戏中心</title>
     <link>${BASE}</link>
-    <description>300+ 在线小工具 + 1000+ 街机小游戏，AI 娱乐中心。前10分钟免费，¥0.2/分钟。</description>
+    <description>520+ 在线小工具 + 1000+ 街机小游戏，AI 娱乐中心。每工具免费试用 10 次，订阅解锁全部。</description>
     <language>zh-cn</language>
     <lastBuildDate>${pubDate}</lastBuildDate>
 ${items.join('\n')}

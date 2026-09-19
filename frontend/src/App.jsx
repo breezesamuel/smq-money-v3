@@ -5,7 +5,7 @@ import './App.css'
 const I18N = {
   zh: {
     brand: '痛点工具箱',
-    tagline: '300+ 小工具，解决你每个具体的小痛点',
+    tagline: '520+ 小工具，解决你每个具体的小痛点',
     search: '搜索工具...',
     all: '全部',
     ai_games: 'AI & 游戏',
@@ -65,7 +65,7 @@ const I18N = {
   },
   en: {
     brand: 'Pain Point Toolkit',
-    tagline: '300+ tiny tools to solve every tiny pain in your life',
+    tagline: '520+ tiny tools to solve every tiny pain in your life',
     search: 'Search tools...',
     all: 'All',
     ai_games: 'AI & Games',
@@ -125,7 +125,7 @@ const I18N = {
   },
   ar: {
     brand: 'صندوق حلول المشاكل',
-    tagline: '300+ أداة صغيرة لحل كل مشكلة صغيرة في حياتك',
+    tagline: '520+ أداة صغيرة لحل كل مشكلة صغيرة في حياتك',
     search: 'ابحث عن أداة...',
     all: 'الكل',
     ai_games: 'ألعاب وذكاء اصطناعي',
@@ -893,6 +893,89 @@ function runTool(tool, input, lang) {
     return `🔐 密码「${'•'.repeat(Math.min(pwd.length, 16))}」\n长度 ${pwd.length} 位 · 复杂度评分 ${score}/5\n强度：${level}\n建议：${score < 4 ? '混合大小写+数字+符号，且不少于12位' : '此密码不错，但仍建议不同网站用不同密码'}`
   }
 
+  // ====== 2026-09 第六批确定性工具（真实计算，零 AI 成本） ======
+  if (slug.includes('baby-track') || slug.includes('喂养')) {
+    const times = txt.split(/[,，、\s;；]+/).filter(x => /[:：]|点|时/.test(x) || /^\d{1,2}$/.test(x)).slice(0, 8)
+    if (times.length >= 2) {
+      const parse = t => {
+        let h, m = 0
+        const mm = t.match(/(\d{1,2})[:：](\d{1,2})/)
+        if (mm) { h = +mm[1]; m = +mm[2] } else if (t.includes('点') || t.includes('时')) { h = +t.replace(/\D/g, ''); }
+        else h = +t
+        return h * 60 + m
+      }
+      const mins = times.map(parse)
+      const gaps = mins.slice(1).map((x, i) => x - mins[i])
+      const avg = gaps.reduce((a, b) => a + b, 0) / gaps.length
+      return `🍼 本次喂养间隔分析（${times.join(' → ')}）：\n${gaps.map((g, i) => `  ${times[i]} → ${times[i + 1]}：间隔 ${g} 分钟`).join('\n')}\n平均间隔 ≈ ${Math.round(avg)} 分钟\n建议：${avg < 150 ? '宝宝可能没吃饱，可适当加量' : avg > 240 ? '间隔偏长，注意观察是否饥饿' : '间隔合理，喂养节奏正常'}`
+    }
+    return '请输入多次喂奶时间（如 8:00 10:30 13:00）'
+  }
+  if (slug.includes('break-time-optimizer') || slug.includes('休息时间优化') || slug.includes('break-optimizer')) {
+    const m = txt.match(/(\d+)\s*(分钟|小时|min|h)/)
+    const workMin = m ? m[1] * (m[2].includes('小时') || m[2].includes('h') ? 60 : 1) : 90
+    const breakMin = Math.max(5, Math.round(workMin * 0.08 / 5) * 5)
+    const cycles = Math.max(2, Math.round(480 / (workMin + breakMin)))
+    return `🧠 专注-休息规划（工作强度评估）：\n专注 ${workMin} 分钟 → 休息 ${breakMin} 分钟\n工作 8 小时 ≈ ${cycles} 个循环\n建议：\n· 休息时离开屏幕远眺 2 分钟\n· 每 4 个循环安排 20 分钟大休\n· 配合喝水+伸展，效率更高`
+  }
+  if (slug.includes('energy-savings') || slug.includes('省电')) {
+    const nums = txt.match(/\d+(\.\d+)?/g)
+    const watts = nums ? parseFloat(nums[0]) : 200
+    const price = nums && nums.length > 1 ? parseFloat(nums[1]) : 0.6
+    const kwh = watts / 1000
+    const day = kwh * 8
+    const month = day * 30
+    const save = month * price * (0.3)
+    return `⚡ 待机/常开设备省电估算：\n功率 ${watts}W × 每天 8h\n日耗电 ≈ ${day.toFixed(2)} 度 → 月耗 ≈ ${month.toFixed(1)} 度\n电费（¥${price}/度）≈ ¥${(month * price).toFixed(1)}/月\n养成关机习惯可省 30% ≈ ¥${save.toFixed(0)}/月，一年省 ¥${(save * 12).toFixed(0)}`
+  }
+  if (slug.includes('grocery-budget') || slug.includes('超市预算')) {
+    const nums = txt.match(/\d+(\.\d+)?/g)
+    if (nums && nums.length >= 2) {
+      const budget = parseFloat(nums[0]), spent = parseFloat(nums[1])
+      const left = budget - spent
+      const pct = spent / budget * 100
+      return `🛒 购物预算 ¥${budget} / 已花 ¥${spent}\n已用 ${pct.toFixed(0)}% · 剩余 ¥${left.toFixed(2)}\n建议：${left < 0 ? '⚠️ 已超支，检查高价项是否必要' : left < budget * 0.2 ? '所做接近预算线，收着点' : '预算充足，放心采购'}`
+    }
+    return '请输入：预算 已花（如 300 245.6）'
+  }
+  if (slug.includes('grocery-memo') || slug.includes('买菜')) {
+    const items = txt.split(/[,，、\s]+/).filter(Boolean).slice(0, 15)
+    if (items.length) {
+      return `🥬 买菜清单（${items.length} 项）：\n${items.map((it, i) => `  ${i + 1}. ${it}`).join('\n')}\n建议：绿叶菜→根茎→冷冻品 顺序逛，避免来回折返`
+    }
+    return '请输入要买的菜（用逗号分隔，如 鸡蛋 菠菜 排骨）'
+  }
+  if (slug.includes('tax-season') || slug.includes('自由职业')) {
+    const n = parseFloat(txt.replace(/[^\d.]/g, '')) || 100000
+    const deductible = n * 0.2
+    const taxable = (n - deductible)
+    let tax = 0
+    if (taxable <= 20000) tax = taxable * 0.2
+    else if (taxable <= 50000) tax = taxable * 0.3 - 2000
+    else tax = taxable * 0.4 - 7000
+    return `💼 自由职业年收入 ¥${n.toLocaleString()} 估算：\n劳务报酬减免 20% = ¥${deductible.toLocaleString()}\n应纳税所得 ≈ ¥${Math.max(taxable, 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}\n预估个税 ≈ ¥${Math.max(tax, 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}\n到手 ≈ ¥${(n - Math.max(tax, 0)).toLocaleString(undefined, { maximumFractionDigits: 0 })}\n提示：注册个体户/小规模核定征收可大幅节税（务必咨询专业）`
+  }
+  if (slug.includes('bedtime-ritual') || slug.includes('睡前')) {
+    const wake = txt.match(/(\d{1,2})[:：]?(\d{0,2})/)
+    const wTime = wake ? `${wake[1]}:${wake[2] || '00'}` : '7:30'
+    const wt = wake ? (+wake[1]) * 60 + (+(wake[2] || 0)) : 450
+    const target = (wt - 480 + 1440) % 1440
+    const th = Math.floor(target / 60), tm = target % 60
+    const routine = (target - 60 + 1440) % 1440
+    return `🌙 睡前关机仪式（目标起床 ${wTime}）：\n建议入眠 ${th}:${String(tm).padStart(2, '0')}（睡足 8 小时）\n${routine < 60 ? (Math.floor(routine / 60) > 0 ? '前一晚 ' + Math.floor(routine / 60) + ':' + String(routine % 60).padStart(2, '0') : '前一晚 ' + String(routine).padStart(2, '0') + ' 分') : '前一晚 ' + Math.floor(routine / 60) + ':' + String(routine % 60).padStart(2, '0')} 开始洗澡\n前一晚 ${Math.floor((target - 30 + 1440) % 1440 / 60)}:${String((target - 30 + 1440) % 1440 % 60).padStart(2, '0')} 放下手机\n保持每天同一时间入睡，效果最佳`
+  }
+  if (slug.includes('taobao-price') || slug.includes('比价')) {
+    const nums = txt.match(/\d+(\.\d+)?/g)
+    if (nums && nums.length >= 2) {
+      const p1 = parseFloat(nums[0]), p2 = parseFloat(nums[1])
+      const q1 = nums[2] ? parseFloat(nums[2]) : 1, q2 = nums[3] ? parseFloat(nums[3]) : 1
+      const u1 = p1 / q1, u2 = p2 / q2
+      const cheaper = u1 <= u2 ? '渠道A' : '渠道B'
+      return `🆚 比价雷达：\n渠道A：¥${p1}/${q1}件 单价 ¥${u1.toFixed(2)}\n渠道B：¥${p2}/${q2}件 单价 ¥${u2.toFixed(2)}\n→ 选「${cheaper}」更划算，每件省 ¥${Math.abs(u1 - u2).toFixed(2)}\n（同款同规格比较才有意义）`
+    }
+    return '请输入两家价格与数量：价格1 价格2 [数量1 数量2]（如 39.9 59.9 3 5）'
+  }
+
   // 通用兜底：交给真实 AI 执行（POST /api/ai/tool/run）返回 null 标记
   const reversed = txt.split('').reverse().join('')
   void reversed
@@ -1188,7 +1271,7 @@ function App() {
           <h1>🧰 {t.brand}</h1>
           {langSwitch}
         </div>
-        {view === 'catalog' && <p className="tagline">{String(t.tagline).replace('300+', (stats.total || 300) + '+')}</p>}
+        {view === 'catalog' && <p className="tagline">{String(t.tagline).replace('520+', (stats.total || 300) + '+')}</p>}
       </header>
 
       <nav className="top-nav">

@@ -16426,14 +16426,526 @@
      "desc": "يستخرج النقاط الرئيسية وينشئ ملخصات منظمة"
     }
    }
+  },
+  {
+   "id": "g1322",
+   "slug": "meal-planner-nutrition",
+   "category": "life",
+   "type": "utility",
+   "pricing": {
+    "freeUses": 10,
+    "monthly": 10,
+    "lifetime": 99,
+    "currency": "CNY"
+   },
+   "name": {
+    "zh": {
+     "title": "营养餐规划",
+     "pain": "不知如何吃得更健康",
+     "category": "生活痛点",
+     "desc": "AI根据你的营养需求制定一周菜单"
+    },
+    "en": {
+     "title": "Nutrition Meal Planner",
+     "pain": "Don't know how to eat healthy",
+     "category": "Life Hacks",
+     "desc": "AI creates weekly menus based on your nutritional needs"
+    },
+    "ar": {
+     "title": "مخطط الوجبات الغذائية",
+     "pain": "لا تعرف كيف تأكل بطريقة صحية",
+     "category": "حيل الحياة",
+     "desc": "يقوم الذكاء الاصطناعي بإنشاء قائمة أسبوعية بناءً على احتياجاتك الغذائية"
+    }
+   }
+  },
+  {
+   "id": "g1336",
+   "slug": "smart-shopping-assistant",
+   "category": "life",
+   "type": "utility",
+   "pricing": {
+    "freeUses": 10,
+    "monthly": 10,
+    "lifetime": 99,
+    "currency": "CNY"
+   },
+   "name": {
+    "zh": {
+     "title": "智能购物助手",
+     "pain": "购物超预算难控制",
+     "category": "生活痛点",
+     "desc": "AI分析商品历史价格帮你省钱"
+    },
+    "en": {
+     "title": "Smart Shopping Assistant",
+     "pain": "Shopping over budget hard to control",
+     "category": "Life Hacks",
+     "desc": "AI analyzes product history prices to help you save money"
+    },
+    "ar": {
+     "title": "مساعد التسوق الذكي",
+     "pain": "صعوبة التحكم في إنفاق الميزانية",
+     "category": "حيل الحياة",
+     "desc": "يحلل الذكاء الاصطناعي أسعار المنتجات السابقة لمساعدتك في توفير المال"
+    }
+   }
+  },
+  {
+   "id": "g1338",
+   "slug": "home-maintenance-reminder",
+   "category": "life",
+   "type": "utility",
+   "pricing": {
+    "freeUses": 10,
+    "monthly": 10,
+    "lifetime": 99,
+    "currency": "CNY"
+   },
+   "name": {
+    "zh": {
+     "title": "家务提醒器",
+     "pain": "家务事项总忘记",
+     "category": "生活痛点",
+     "desc": "AI提醒你定期维护家居设施"
+    },
+    "en": {
+     "title": "Home Maintenance Reminder",
+     "pain": "Always forget household chores",
+     "category": "Life Hacks",
+     "desc": "AI reminds you to maintain home facilities regularly"
+    },
+    "ar": {
+     "title": "مذكرات الصيانة المنزلية",
+     "pain": "نسيان المهام المنزلية دائماً",
+     "category": "حيل الحياة",
+     "desc": "يذكرك الذكاء الاصطناعي بصيانة المنزل بانتظام"
+    }
+   }
+  },
+  {
+   "id": "g1350",
+   "slug": "commute-optimizer",
+   "category": "life",
+   "type": "utility",
+   "pricing": {
+    "freeUses": 10,
+    "monthly": 10,
+    "lifetime": 99,
+    "currency": "CNY"
+   },
+   "name": {
+    "zh": {
+     "title": "通勤优化师",
+     "pain": "通勤时间不可预测",
+     "category": "生活痛点",
+     "desc": "AI预测最佳通勤路线避开拥堵"
+    },
+    "en": {
+     "title": "Commute Optimizer",
+     "pain": "Unpredictable commute time",
+     "category": "Life Hacks",
+     "desc": "AI predicts best routes to avoid traffic jams"
+    },
+    "ar": {
+     "title": "محسن مواصلات العمل",
+     "pain": "وقت التنقل غير متوقع",
+     "category": "حيل الحياة",
+     "desc": "يتوقع الذكاء الاصطناعي أفضل المسارات لتجنب الاختناقات المرورية"
+    }
+   }
+  },
+  {
+   "id": "g1355",
+   "slug": "parenting-tip-generator",
+   "category": "life",
+   "type": "utility",
+   "pricing": {
+    "freeUses": 10,
+    "monthly": 10,
+    "lifetime": 99,
+    "currency": "CNY"
+   },
+   "name": {
+    "zh": {
+     "title": "育儿小贴士",
+     "pain": "育儿经验缺乏指导",
+     "category": "生活痛点",
+     "desc": "AI根据孩子年龄提供个性化建议"
+    },
+    "en": {
+     "title": "Parenting Tip Generator",
+     "pain": "Lack of parenting guidance",
+     "category": "Life Hacks",
+     "desc": "AI provides personalized tips based on child's age"
+    },
+    "ar": {
+     "title": "مولد نصائح التربية",
+     "pain": "نقص التوجيه في التربية",
+     "category": "حيل الحياة",
+     "desc": "يوفر الذكاء الاصطناعي نصائح مخصصة حسب عمر الطفل"
+    }
+   }
+  },
+  {
+   "id": "g1359",
+   "slug": "habit-builder-ai",
+   "category": "life",
+   "type": "utility",
+   "pricing": {
+    "freeUses": 10,
+    "monthly": 10,
+    "lifetime": 99,
+    "currency": "CNY"
+   },
+   "name": {
+    "zh": {
+     "title": "习惯养成器",
+     "pain": "好习惯难以坚持",
+     "category": "生活痛点",
+     "desc": "AI帮你制定个性化习惯养成计划"
+    },
+    "en": {
+     "title": "Habit Builder AI",
+     "pain": "Hard to maintain good habits",
+     "category": "Life Hacks",
+     "desc": "AI helps create personalized habit-building plans"
+    },
+    "ar": {
+     "title": "مطور العادات الذكي",
+     "pain": "صعبة الحفاظ على عادات جيدة",
+     "category": "حيل الحياة",
+     "desc": "يساعدك الذكاء الاصطناعي في إنشاء خطط مخصصة لتطوير العادات"
+    }
+   }
+  },
+  {
+   "id": "g1374",
+   "slug": "energy-savings-advisor",
+   "category": "life",
+   "type": "utility",
+   "pricing": {
+    "freeUses": 10,
+    "monthly": 10,
+    "lifetime": 99,
+    "currency": "CNY"
+   },
+   "name": {
+    "zh": {
+     "title": "节能顾问",
+     "pain": "电费支出过高",
+     "category": "生活痛点",
+     "desc": "AI分析用电习惯提供省电建议"
+    },
+    "en": {
+     "title": "Energy Savings Advisor",
+     "pain": "High electricity bills",
+     "category": "Life Hacks",
+     "desc": "AI analyzes usage habits to provide saving tips"
+    },
+    "ar": {
+     "title": "مستشار توفير الطاقة",
+     "pain": "فواتير الكهرباء المرتفعة",
+     "category": "حيل الحياة",
+     "desc": "يحلل الذكاء الاصطناعي عادات الاستهلاك لتقديم نصائح التوفير"
+    }
+   }
+  },
+  {
+   "id": "g1377",
+   "slug": "social-event-planner",
+   "category": "life",
+   "type": "utility",
+   "pricing": {
+    "freeUses": 10,
+    "monthly": 10,
+    "lifetime": 99,
+    "currency": "CNY"
+   },
+   "name": {
+    "zh": {
+     "title": "活动策划助手",
+     "pain": "社交活动安排复杂",
+     "category": "生活痛点",
+     "desc": "AI帮你协调朋友时间安排聚会"
+    },
+    "en": {
+     "title": "Event Planner Assistant",
+     "pain": "Social event planning complex",
+     "category": "Life Hacks",
+     "desc": "AI helps coordinate friend schedules for gatherings"
+    },
+    "ar": {
+     "title": "مساعد مناسبات اجتماعية",
+     "pain": "تعقيد التخطيط للفعاليات الاجتماعية",
+     "category": "حيل الحياة",
+     "desc": "يساعدك الذكاء الاصطناعي في تنسيق جداول الأصدقاء للتجمعات"
+    }
+   }
+  },
+  {
+   "id": "g1381",
+   "slug": "smart-shopping-assistant",
+   "category": "life",
+   "type": "utility",
+   "pricing": {
+    "freeUses": 10,
+    "monthly": 10,
+    "lifetime": 99,
+    "currency": "CNY"
+   },
+   "name": {
+    "zh": {
+     "title": "省钱购物助手",
+     "pain": "超市购物超预算",
+     "category": "生活痛点",
+     "desc": "比较价格智能推荐优惠"
+    },
+    "en": {
+     "title": "Smart Shop Assistant",
+     "pain": "Supermarket over budget",
+     "category": "Life Hacks",
+     "desc": "Compare prices and smart recommend deals"
+    },
+    "ar": {
+     "title": "مساعد التسوق الذكي",
+     "pain": "ميزانية التسوق تجاوزت",
+     "category": "حيل الحياة",
+     "desc": "مقارنة الأسعار وتوصية العروض الذكية"
+    }
+   }
+  },
+  {
+   "id": "g1383",
+   "slug": "home-clean-scheduler",
+   "category": "life",
+   "type": "utility",
+   "pricing": {
+    "freeUses": 10,
+    "monthly": 10,
+    "lifetime": 99,
+    "currency": "CNY"
+   },
+   "name": {
+    "zh": {
+     "title": "家务智能安排",
+     "pain": "家务分配混乱低效",
+     "category": "生活痛点",
+     "desc": "AI根据习惯优化家务清单"
+    },
+    "en": {
+     "title": "CleanSmart Scheduler",
+     "pain": "Chaotic housework tasks",
+     "category": "Life Hacks",
+     "desc": "AI optimizes chore list based on habits"
+    },
+    "ar": {
+     "title": "مجدول تنظيم المنزل",
+     "pain": "مهام المنزل فوضوية",
+     "category": "حيل الحياة",
+     "desc": "تحسين قائمة المهام حسب العادات"
+    }
+   }
+  },
+  {
+   "id": "g1384",
+   "slug": "med-reminder-companion",
+   "category": "life",
+   "type": "utility",
+   "pricing": {
+    "freeUses": 10,
+    "monthly": 10,
+    "lifetime": 99,
+    "currency": "CNY"
+   },
+   "name": {
+    "zh": {
+     "title": "服药提醒助手",
+     "pain": "忘记服药影响健康",
+     "category": "生活痛点",
+     "desc": "智能提醒用药时间和禁忌"
+    },
+    "en": {
+     "title": "MediRemind Helper",
+     "pain": "Forget meds affecting health",
+     "category": "Life Hacks",
+     "desc": "Smart reminders for meds & contraindications"
+    },
+    "ar": {
+     "title": "مساعد تذكير الأدوية",
+     "pain": "نسيان الأدوية يؤثر",
+     "category": "حيل الحياة",
+     "desc": "تذكير ذكي للأدوية والتحذيرات"
+    }
+   }
+  },
+  {
+   "id": "g1400",
+   "slug": "traffic-route-optimizer",
+   "category": "life",
+   "type": "utility",
+   "pricing": {
+    "freeUses": 10,
+    "monthly": 10,
+    "lifetime": 99,
+    "currency": "CNY"
+   },
+   "name": {
+    "zh": {
+     "title": "出行路线优化",
+     "pain": "通勤时间长耗精力",
+     "category": "生活痛点",
+     "desc": "实时推荐最快最省路线"
+    },
+    "en": {
+     "title": "Traffic Route Pro",
+     "pain": "Long commute draining energy",
+     "category": "Life Hacks",
+     "desc": "Real-time fastest & most efficient routes"
+    },
+    "ar": {
+     "title": "مُحسِّن طرق السفر",
+     "pain": "رحلة العمل طويلة",
+     "category": "حيل الحياة",
+     "desc": "طرق أسرع وأكثر كفاءة بالوقت الحقيقي"
+    }
+   }
+  },
+  {
+   "id": "g1401",
+   "slug": "child-activity-planner",
+   "category": "life",
+   "type": "utility",
+   "pricing": {
+    "freeUses": 10,
+    "monthly": 10,
+    "lifetime": 99,
+    "currency": "CNY"
+   },
+   "name": {
+    "zh": {
+     "title": "儿童活动安排",
+     "pain": "孩子时间难管理",
+     "category": "生活痛点",
+     "desc": "AI规划平衡学习玩乐时间"
+    },
+    "en": {
+     "title": "KidActivity Planner",
+     "pain": "Hard managing kid's time",
+     "category": "Life Hacks",
+     "desc": "AI balances study & play schedules"
+    },
+    "ar": {
+     "title": "مخطط أنشطة الطفل",
+     "pain": "إدارة وقت الطفل صعبة",
+     "category": "حيل الحياة",
+     "desc": "موازنة الجداول بين الدراسة واللعب"
+    }
+   }
+  },
+  {
+   "id": "g1407",
+   "slug": "hobby-skill-tracker",
+   "category": "life",
+   "type": "utility",
+   "pricing": {
+    "freeUses": 10,
+    "monthly": 10,
+    "lifetime": 99,
+    "currency": "CNY"
+   },
+   "name": {
+    "zh": {
+     "title": "爱好技能追踪",
+     "pain": "兴趣学习无进展",
+     "category": "生活痛点",
+     "desc": "AI分析并提供个性化练习"
+    },
+    "en": {
+     "title": "HobbySkill Tracker",
+     "pain": "No progress in hobbies",
+     "category": "Life Hacks",
+     "desc": "AI analysis with personalized practice tips"
+    },
+    "ar": {
+     "title": "تتبع مهوايات الهوايات",
+     "pain": "لا تقدم في الهوايات",
+     "category": "حيل الحياة",
+     "desc": "تحليل ذكي مع نصائح تمرين مخصصة"
+    }
+   }
+  },
+  {
+   "id": "g1410",
+   "slug": "digital-detox-timer",
+   "category": "life",
+   "type": "utility",
+   "pricing": {
+    "freeUses": 10,
+    "monthly": 10,
+    "lifetime": 99,
+    "currency": "CNY"
+   },
+   "name": {
+    "zh": {
+     "title": "数字排毒计时",
+     "pain": "手机依赖影响生活",
+     "category": "生活痛点",
+     "desc": "智能提醒休息和减少屏幕时间"
+    },
+    "en": {
+     "title": "Digital Detox Timer",
+     "pain": "Phone addiction affecting life",
+     "category": "Life Hacks",
+     "desc": "Smart reminders for breaks & less screen time"
+    },
+    "ar": {
+     "title": "مؤقت إزالة السموم الرقمية",
+     "pain": "إدمان الهاتف يؤثر",
+     "category": "حيل الحياة",
+     "desc": "تذكير ذكي بالراحة وزمن الشاشة"
+    }
+   }
+  },
+  {
+   "id": "g1411",
+   "slug": "meeting-summary-assistant",
+   "category": "worker",
+   "type": "utility",
+   "pricing": {
+    "freeUses": 10,
+    "monthly": 10,
+    "lifetime": 99,
+    "currency": "CNY"
+   },
+   "name": {
+    "zh": {
+     "title": "会议总结助手",
+     "pain": "会议记录太耗时",
+     "category": "打工人",
+     "desc": "AI自动提炼会议重点并生成总结"
+    },
+    "en": {
+     "title": "Meeting Summary",
+     "pain": "Time-consuming meetings",
+     "category": "Workplace Power",
+     "desc": "AI auto-extracts key points and generates summaries"
+    },
+    "ar": {
+     "title": "مساعد تلخيص الاجتماع",
+     "pain": "اجتماعات تستغرق وقتاً",
+     "category": "أدوات العمل",
+     "desc": "يستخرج النقاط الرئيسية وينشئ تلخيصا"
+    }
+   }
   }
  ],
  "stats": {
-  "total": 512,
+  "total": 528,
   "byCategory": {
    "ai_games": 169,
-   "life": 179,
-   "worker": 164
+   "life": 194,
+   "worker": 165
   }
  }
 }

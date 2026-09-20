@@ -5,7 +5,7 @@ import './App.css'
 const I18N = {
   zh: {
     brand: '痛点工具箱',
-    tagline: '520+ 小工具，解决你每个具体的小痛点',
+    tagline: '528+ 小工具，解决你每个具体的小痛点',
     search: '搜索工具...',
     all: '全部',
     ai_games: 'AI & 游戏',
@@ -65,7 +65,7 @@ const I18N = {
   },
   en: {
     brand: 'Pain Point Toolkit',
-    tagline: '520+ tiny tools to solve every tiny pain in your life',
+    tagline: '528+ tiny tools to solve every tiny pain in your life',
     search: 'Search tools...',
     all: 'All',
     ai_games: 'AI & Games',
@@ -125,7 +125,7 @@ const I18N = {
   },
   ar: {
     brand: 'صندوق حلول المشاكل',
-    tagline: '520+ أداة صغيرة لحل كل مشكلة صغيرة في حياتك',
+    tagline: '528+ أداة صغيرة لحل كل مشكلة صغيرة في حياتك',
     search: 'ابحث عن أداة...',
     all: 'الكل',
     ai_games: 'ألعاب وذكاء اصطناعي',
@@ -204,6 +204,94 @@ function runTool(tool, input, lang) {
   const txt = input || ''
   // 本地逻辑文案为中文；非中文界面走真实 AI 以保持输出语言一致
   if (lang && lang !== 'zh') return null
+
+  // ====== 2026-09 第七批B：新增16工具（精确 slug，优先执行） ======
+  if (slug.includes('meal-planner-nutrition') || slug.includes('营养餐')) {
+    const nums = txt.match(/\d+/g)
+    if (nums) {
+      const height = parseFloat(nums[0]), weight = nums[1] ? parseFloat(nums[1]) : height - 100
+      const bmi = weight / Math.pow(height / 100, 2)
+      let p = 0, c = 0, f = 0
+      if (bmi < 18.5) { p=15; c=55; f=30 }
+      else if (bmi < 24) { p=20; c=50; f=30 }
+      else if (bmi < 28) { p=25; c=40; f=35 }
+      else { p=25; c=35; f=40 }
+      const cal = Math.max(1400, Math.min(2600, Math.round(bmi * 60)))
+      return `🥗 营养餐规划（身高 ${height}cm / 体重 ${weight}kg）：\nBMI = ${bmi.toFixed(1)}${bmi<18.5?'(偏瘦)':bmi<24?'(正常)':bmi<28?'(超重)':'(肥胖)'}\n每日热量建议 ≈ ${cal} kcal\n配比：蛋白 ${p}% · 碳水 ${c}% · 脂肪 ${f}%\n提示：多吃蛋白质+膳食纤维，少油少盐，每天2000ml水`
+    }
+    return '请输入 身高 体重（cm/kg，如 170 65）'
+  }
+  if (slug.includes('smart-shopping-assistant') || slug.includes('省钱购物')) {
+    const nums = txt.match(/\d+(\.\d+)?/g)
+    const budget = nums ? parseFloat(nums[0]) : 100
+    const items = txt.split(/[\s,，、\n]+/).filter(s => s && !/^\d/.test(s)).slice(0, 8)
+    return `🛒 智能购物助手（预算 ¥${budget}）：\n${items.length ? items.map((it, i) => `  ${i + 1}. ${it}`).join('\n') + '\n' : ''}规则：\n· 先买生活必需（食材/日用品），再买欲望项\n· 单价超预算10%的商品，等48小时再决定\n· 用「每克/每件单价」比价更划算\n· 列清单只按需购买，防止冲动消费`
+  }
+  if (slug.includes('home-maintenance-reminder') || slug.includes('家务提醒')) {
+    const days = txt.match(/\d+/g)
+    return `🏠 家务定期提醒表：\n· 每天：倒垃圾 / 洗碗 / 台面擦拭 / 地面吸尘\n· 每周：换床单 / 拖地 / 卫生间消毒 / 冰箱清理\n· 每月：除油污 / 洗衣机桶自洁 / 下水道疏通\n· 每季：空调滤网清洗 / 床垫翻转 / 纱窗除尘\n· 每半年：冰箱密封条 / 热水器 / 油烟机深度清洁\n建议设为日历重复提醒，家庭共享更高效`
+  }
+  if (slug.includes('commute-optimizer') || slug.includes('通勤优化')) {
+    const nums = txt.match(/\d+/g)
+    const km = nums ? parseFloat(nums[0]) : 15
+    const car = km, bus = Math.round(km * 1.8), bike = Math.round(km * 1.15)
+    return `🚇 通勤优化（单程 ${km} km）：\n· 开车：约 ${car} 分钟（高峰+堵车不稳定）\n· 公交/地铁：约 ${bus} 分钟（可补觉/阅读）\n· 骑行/步行：约 ${bike} 分钟（健康叠加运动）\n建议：\n· 错峰出行可省 30% 时间\n· 通勤 >40 分钟可考虑换房/换工作就近\n· 把通勤时间安排听书/播客/学习`
+  }
+  if (slug.includes('parenting-tip-generator') || slug.includes('育儿')) {
+    return `👶 育儿每日小贴士：\n· 规律作息：固定睡觉/进食/玩耍时间\n· 每天户外活动 ≥1 小时（近视防控关键）\n· 电子屏幕：2 岁以下避免；2-5 岁每天 ≤1 小时\n· 亲子阅读 15 分钟/天\n· 多鼓励具体行为：「你收拾玩具做得好！」\n· 家庭餐桌正餐同吃，少零食\n· 睡前 1 小时远离屏幕，建立安睡仪式`
+  }
+  if (slug.includes('habit-builder-ai') || slug.includes('习惯养成')) {
+    const days = parseInt(txt.replace(/[^\d]/g, '') || 21, 10)
+    const weeks = Math.ceil(days / 7)
+    return `🔥 习惯养成计划（目标 ${days} 天）：\n· 第1-7天：小到不可能失败（每天2分钟起步）\n· 第8-14天：绑定旧习惯（刷完牙→做深蹲）\n· 第15-21天：环境设计（瑜伽垫铺好、app放主页）\n· ${days}天里程碑：给自己个小奖励\n规则：\n· 中断1天不放弃，连续打卡记录\n· 每天固定时间+固定地点触发\n· 找搭子互相监督，打卡群每天报一次`
+  }
+  if (slug.includes('energy-savings-advisor') || slug.includes('节能顾问')) {
+    const fee = parseFloat(txt.replace(/[^\d.]/g, '')) || 300
+    const tips = Math.round(fee * 0.2)
+    return `💡 节能顾问（当前电费 ¥${fee}/月）：\n· 空调 26℃±1℃：每度遵此省 8-10%\n· 待机电器（电视/机顶盒/路由器）智能插座定时关：省 5%\n· 峰谷电价：洗衣机/充电放低谷：省 15%\n· 冰箱后留 10cm 散热、密封条检查\n· LED 灯替换：省 30% 照明电\n· 预计可省 ≈ ¥${tips}/月，一年省 ¥${tips * 12}\n先查用电报告，掐掉最大浪费项`
+  }
+  if (slug.includes('social-event-planner') || slug.includes('活动策划')) {
+    const nums = txt.match(/\d+/g)
+    const people = nums ? parseFloat(nums[0]) : 10
+    const budget = nums && nums.length > 1 ? parseFloat(nums[1]) : people * 80
+    return `🎉 活动策划（${people} 人 / 预算 ¥${budget}）：\n· 时间：周${['末', '一二三四五'][Math.floor(Math.random()*3)]} 下午\n· 场地：${people > 20 ? '租场地/包间' : '家中 or 咖啡馆包场'}\n· 餐食：人均 ¥${Math.round(budget * 0.5 / people)}${people > 15 ? '订餐 or 自助' : ''}\n· 流程：破冰游戏 20min → 正餐 → 自由活动\n· 提醒：提前 3 天确认人数、过敏原、费用分摊方式\n· 备2个雨天备选方案`
+  }
+  if (slug.includes('home-clean-scheduler') || slug.includes('家务安排')) {
+    const nums = txt.match(/\d+/g)
+    const rooms = nums ? parseInt(nums[0], 10) : 3
+    const weekly = 7
+    return `🧹 家务智能排班（${rooms} 房 / 7天）：\n· 每日 10min：台面清零 / 洗完即收 / 地面快扫\n· 周一：床品换洗 + 洗手间消毒\n· 周二：厨房深度 + 垃圾清运\n· 周三：客厅吸尘 + 桌面整理\n· 周四：专属衣橱换季\n· 周五：油烟机/微波炉清洁\n· 周末：大扫除60min + 下周采购\n规则：按「每天15分钟」拆解，不让家务堆积`
+  }
+  if (slug.includes('med-reminder-companion') || slug.includes('服药助手')) {
+    const d = txt.match(/(\d{1,2})[:：](\d{0,2})/g)
+    return `💊 服药提醒助手：\n· 建议设置定时：早餐后 / 午餐后 / 晚餐后 / 睡前\n· 每日固定闹钟：三餐后 + 睡前各一次\n· 提醒方式：手机闹钟 + 备用药盒按星期分类\n· 医嘱餐前后用药要看清；胶囊勿拆、缓释别嚼\n· 长期用药定期复查肝功能/etc\n· 家人共享用药清单，防漏服误服`
+  }
+  if (slug.includes('traffic-route-optimizer') || slug.includes('出行路线')) {
+    const d = txt.match(/\d{1,2}[:：]?\d{0,2}/)
+    const lines = txt.split(/[\n;,，]/).filter(l => l.trim()).slice(0, 4)
+    return `🗺️ 出行路线优化${d ? '（出发 ' + d[0] + '）' : ''}：\n${['地图实时路况选最短时间', '避开早晚高峰 7-9点/17-19点', '地铁+共享单车接驳更稳', '提前10分钟出发留缓冲'].map((t, i) => `  ${i + 1}. ${t}`).join('\n')}\n建议：通勤/出行前看一次实时路况再定方案`
+  }
+  if (slug.includes('child-activity-planner') || slug.includes('儿童活动')) {
+    const nums = txt.match(/\d+/g)
+    const hours = nums ? parseFloat(nums[0]) : 6
+    return `🎨 儿童周末安排（约 ${hours} 小时）：\n· 户外探索 1h：公园/骑车/球类（护眼+体能）\n· 创造时间 1h：画画/乐高/手工\n· 学习时间 40min：阅读+作业（短时高效）\n· 亲子时间 40min：桌游/共读/做饭\n· 自由活动 1h：自主选择，培养自我管理\n· 屏幕时间 <1h\n节奏：活动-休息-活动交替，避免过度排满`
+  }
+  if (slug.includes('hobby-skill-tracker') || slug.includes('爱好技能')) {
+    const nums = txt.match(/\d+/g)
+    const min = nums ? Math.max(5, parseInt(nums[0], 10)) : 30
+    const hours = Math.round(min * 5 / 60 * 10) / 10
+    return `📈 爱好技能追踪（每天 ${min} 分钟）：\n· 每周投入 ≈ ${Math.round(min * 5 / 60)} 小时\n· 100小时原则：看懂门道（约 ${Math.round(100 / Math.max(0.1, min * 5 / 60))} 周）\n· 刻意练习：针对弱项专项练，而非重复舒适区\n· 每2周录/录一版对比进度\n· 找到同好社群互相点评\n坚持策略：固定时段+微目标，先坚持30天`
+  }
+  if (slug.includes('digital-detox-timer') || slug.includes('数字排毒')) {
+    const h = parseInt(txt.replace(/[^\d]/g, '') || 1, 10)
+    return `📵 数字排毒计划（${h} 小时）：\n· 手机开免打扰/关机放另一个房间\n· 阶段性：先 25min 专注 → 休息 → 再续\n· 做真实活动替代：散步/阅读/做饭/手工\n· 桌面清理，只留当前任务\n· 结束后记录感受（事后：更专注/更焦虑？）\n· 建立每日黄金时段无手机规则`
+  }
+  if (slug.includes('meeting-summary-assistant') || slug.includes('会议总结')) {
+    const lines = txt.split(/[\n,，。]/).map(s => s.trim()).filter(s => s && s.length > 3).slice(0, 12)
+    const dec = lines.filter(l => /决定|确定|改为|同意|通过|关闭|启动/.test(l))
+    const task = lines.filter(l => /需|要|负责|跟进|记录|完成/.test(l))
+    return `📝 会议总结生成：\n【会议要点】\n  · ${(lines.length ? lines.slice(0, 5).join('\n  · ') : '（未输入内容，请粘贴会议记录）')}\n【决议】\n  · ${dec.length ? dec.join('\n  · ') : '（未识别明确决议，建议追问确认）'}\n【待办/负责人】\n  · ${task.length ? task.join('\n  · ') : '（未识别待办事项）'}\n提示：会后24小时内同步纪要 & 指派跟进人`
+  }
 
   // 文本洗牌/打乱
   if (slug.includes('duplicate') || slug.includes('去重') || slug.includes('dedupe')) {
@@ -976,6 +1064,109 @@ function runTool(tool, input, lang) {
     return '请输入两家价格与数量：价格1 价格2 [数量1 数量2]（如 39.9 59.9 3 5）'
   }
 
+  // ====== 2026-09 第七批确定性工具（真实计算，零 AI 成本） ======
+  if (slug.includes('meeting-clash') || slug.includes('冲突检测')) {
+    const slots = txt.split(/[\s,，、\n;；]+/).filter(s => /\d/.test(s) && /[-~～·]/.test(s)).slice(0, 8)
+    if (slots.length >= 2) {
+      const parse = s => {
+        const ps = s.match(/(\d{1,2})[:：]?(\d{0,2})?\s*[-～至到]+\s*(\d{1,2})[:：]?(\d{0,2})?/)
+        if (!ps) return null
+        return { s: (+ps[1]) * 60 + (+(ps[2] || 0)), e: (+ps[3]) * 60 + (+(ps[4] || 0)) }
+      }
+      const ev = slots.map(parse).filter(Boolean)
+      const clash = []
+      for (let i = 0; i < ev.length; i++) for (let j = i + 1; j < ev.length; j++) {
+        const a = ev[i], b = ev[j]
+        if (a.s < b.e && b.s < a.e) clash.push(`「${slots[i]}」冲突「${slots[j]}」`)
+      }
+      if (clash.length) return `⛔ 会议冲突检测：\n${clash.join('\n')}\n建议：合并相邻会议或砍掉非必要项，留出 30% 缓冲`
+      return `✅ 无冲突：\n${slots.map((s, i) => `  ${i + 1}. ${s}`).join('\n')}\n日程排布合理，预留了缓冲`
+    }
+    return '请输入多个会议时间段（如 9:00-10:00 9:30-11:00 14:00-15:00）'
+  }
+  if (slug.includes('sit-break') || slug.includes('久坐')) {
+    const h = parseFloat(txt.replace(/[^\d.]/g, '')) || 8
+    const breaks = Math.max(4, Math.floor(h * 3600 / 1800))
+    const water = breaks * 0.25
+    return `🪑 久坐提醒方案（工作 ${h} 小时）：\n· 每 30 分钟起身活动 2 分钟（${breaks} 次）\n· 每小时眺望远处 20 秒（缓解视疲劳）\n· 建议喝水 ${water.toFixed(1)}L（每 30 分钟小口喝）\n· 每 2 小时做 1 组肩颈拉伸\n· 可设置手机/电脑定时提醒`
+  }
+  if (slug.includes('stretch-guide') || slug.includes('拉伸')) {
+    const p = txt.trim() || '肩颈'
+    const map = {
+      '肩颈': '颈部侧拉伸左右各30秒 / 耸肩绕肩10次 / 背后扣手',
+      '腰': '猫式伸展 / 婴儿式 / 站姿体前屈',
+      '背': '门框扩胸 / 墙角拉伸 / YTW 训练',
+      '腿': '弓步压腿 / 站立前屈 / 股四头拉伸',
+      '腕': '手腕屈伸交替 / 手指伸展',
+      '眼': '20-20-20 远眺 / 眼球上下左右转动'
+    }
+    const pick = Object.entries(map).find(([k]) => p.includes(k))
+    return `🤸 「${p}」拉伸方案：\n${(pick ? pick[1] : '颈部侧拉伸 / 肩颈放松 / 猫式伸展')}\n建议：每个动作保持 30-60 秒，配合深呼吸，每天 2-3 组`
+  }
+  if (slug.includes('car-baby') || slug.includes('防遗忘')) {
+    return `🚗 防「婴儿忘车内」安全清单：\n· 后排常放一个玩偶，入座移到副驾→下车必见提醒\n· 钱包/手机放婴儿旁边→下车必拿\n· APP 或手环设置下车前检查\n· 热天开窗前检查后排（30分钟后车内可升到 50℃+）\n· 养成「打开后门」再锁车的肌肉记忆\n· 家人互相提醒：谁送孩子、几点回家 在群里说一声`
+  }
+  if (slug.includes('interview-qa') || slug.includes('面试')) {
+    const topics = txt.trim() ? [txt.trim()] : ['项目经历', '技术基础', '行为问题', '反问环节']
+    const bank = {
+      '项目': ['讲一个最有挑战的项目？', '项目中最难的技术点及解决过程？', '如何评估项目收益？'],
+      '技术': ['你的技术栈深度 vs 广度如何平衡？', '讲一个线上故障排查的完整案例？'],
+      '行为': ['遇到意见分歧如何处理？', '被拒绝/失败后的复盘方法？', '如何设置优先级？'],
+      '反问': ['团队未来半年的目标？', '这个岗位的考核标准？']
+    }
+    return `🎤 面试题库（${topics.join('/')}）：\n${topics.map(topic => {
+      const key = Object.keys(bank).find(k => topic.includes(k.slice(0, 1)))
+      const qs = (key ? bank[key] : bank['行为']).map(q => `· ${q}`).join('\n')
+      return `【${topic}】\n${qs}`
+    }).join('\n')}\n💡 用 STAR 法则组织回答（情境-任务-行动-结果）`
+  }
+  if (slug.includes('agenda-maker') || slug.includes('议程')) {
+    const dur = Math.max(10, Math.min(120, parseFloat(txt.replace(/[^\d.]/g, '')) || 30))
+    const open = Math.max(3, Math.round(dur * 0.08))
+    const topics = 3
+    const topicShare = Math.floor(dur * 0.5)
+    const decision = Math.max(5, Math.round(dur * 0.18))
+    const perTopic = Math.floor(topicShare / topics)
+    return `📋 会议议程（共 ${dur} 分钟）：\n0:00 - ${open} 分钟　开场定目标 / 背景同步\n${open} - ${open + perTopic} 分钟　议题1：进展与关键信息\n${open + perTopic} - ${open + perTopic * 2} 分钟　议题2：讨论与澄清\n${open + perTopic * 2} - ${open + perTopic * 3} 分钟　议题3：决策与责任分配\n末 ${decision} 分钟　形成决议 / 分工 / 后续时间表\n——\n规则：\n· 议题聚焦决策，不蔓延；\n· 每个议题主持人限时；\n· 会后 24 小时内发出纪要并指派跟进人`
+  }
+  if (slug.includes('email-inbox') || slug.includes('收件')) {
+    const labels = txt.split(/[\s,，、\n;；]+/).filter(Boolean).slice(0, 8)
+    if (labels.length) {
+      return `📥 收件优先级矩阵：\n${labels.map((l, i) => `  ${i + 1}. ${l} → ${i < 2 ? '🔴 高优先(今天处理)' : i < 5 ? '🟡 中优先(本周)' : '⚪ 低优先(批量/归档)'}`).join('\n')}\n规则：重要+紧急先做；不紧急的固定时间批量处理（如每天 11:00/16:00）`
+    }
+    return '请输入待处理事项（用逗号分隔，如 客户合同 报销 周报 订阅通知）'
+  }
+  if (slug.includes('meeting-detox') || slug.includes('会议减负')) {
+    const nums = txt.match(/\d+(\.\d+)?/g)
+    const hours = nums ? parseFloat(nums[0]) : 3
+    const people = nums && nums.length > 1 ? parseFloat(nums[1]) : 6
+    const cost = 40 // 时薪估值
+    const total = hours * people * cost
+    const save = total * 0.3
+    return `📉 会议减负计算（每天 ${hours} 小时 × ${people} 人）：\n日均会议成本 ≈ ¥${total.toFixed(0)}（按 ¥40/时/人估算）\n砍掉 30% 低效会议 → 月省 ≈ ¥${(save * 22).toFixed(0)}\n建议：\n· 30 分钟以内的会改 Slack/邮件\n· 无决策项的会改异步文档\n· 严格 standup ≤ 15 分钟`
+  }
+  if (slug.includes('focus-block') || slug.includes('深度工作')) {
+    const nums = txt.match(/\d+/g)
+    const hours = nums ? parseFloat(nums[0]) : 4
+    const blocks = Math.floor(hours / 1.5)
+    const slots = []
+    for (let i = 0; i < blocks; i++) slots.push(Math.floor(540 + i * 100 / 60))
+    return `🎯 深度工作排程（今日 ${hours} 小时）：\n${Array.from({ length: blocks }, (_, i) => `  Block${i + 1}: ${Math.floor(9 + i * 1.5)}:00-${Math.floor(9 + i * 1.5 + 1)}:00 专注90分钟`).join('\n')}\n建议：\n· 早上精神最好时段排最重要任务\n· 关键块内关通知、免打扰\n· 块间安排 10 分钟处理消息缓冲`
+  }
+  if (slug.includes('baby-sleep-tracker') || slug.includes('婴儿睡眠')) {
+    const times = txt.split(/[,，、\s]+/).filter(t => /[:：]|点|时/.test(t)).slice(0, 6)
+    if (times.length >= 2) {
+      const parse = t => { const m = t.match(/(\d{1,2})[:：]?(\d{0,2})?/); return (+m[1]) * 60 + (+(m[2] || 0)); }
+      const mins = times.map(parse)
+      const sleeps = mins.slice(1).map((x, i) => { let d = x - mins[i]; if (d <= 0) d += 1440; return d; })
+      const total = sleeps.reduce((a, b) => a + b, 0)
+      const avg = sleeps.length ? total / sleeps.length : 0
+      const nightTotal = mins[mins.length - 1] > 600 ? mins[mins.length - 1] - mins[0] : 0
+      return `🌙 婴儿睡眠分析（${times.join(' → ')}）：\n白天小睡 ${times.length - 1} 次 · 平均 ${Math.round(avg)} 分钟\n全天累计 ≈ ${Math.round(total)} 分钟（${(total / 60).toFixed(1)} 小时）\n建议：${total < 300 ? '睡眠偏少，注意傍晚过度疲劳会更难入睡' : total < 480 ? '较规律，可维持' : '充足，作息很健康'}`
+    }
+    return '请输入宝宝入睡时间点（如 21:00 0:30 3:00 6:30）'
+  }
+
   // 通用兜底：交给真实 AI 执行（POST /api/ai/tool/run）返回 null 标记
   const reversed = txt.split('').reverse().join('')
   void reversed
@@ -1271,7 +1462,7 @@ function App() {
           <h1>🧰 {t.brand}</h1>
           {langSwitch}
         </div>
-        {view === 'catalog' && <p className="tagline">{String(t.tagline).replace('520+', (stats.total || 300) + '+')}</p>}
+        {view === 'catalog' && <p className="tagline">{String(t.tagline).replace('528+', (stats.total || 300) + '+')}</p>}
       </header>
 
       <nav className="top-nav">

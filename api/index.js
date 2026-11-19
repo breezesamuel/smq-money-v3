@@ -219,6 +219,60 @@ module.exports = async (req, res) => {
     return;
   }
 
+  // /api/subwall 与 /api/entitle —— 订阅墙 fail-closed 端点
+  // 说明：付费权益只能由支付回调（/api/alipay/notify 验签通过后）开通。
+  //      公共端点不开通/不延长；对未知 ref 诚实返回 free；绝不把客户端请求当作已开通。
+  //      若将来在 Vercel 上接入真实订阅存储，须改为读存储并按 paid 订单校验后再放行。
+  if (p[0] === 'subwall' || p[0] === 'entitle') {
+    const sub = p[0];
+    const SW_PLANS = [
+      { id: 'trial', label: '首周体验（7天）', cny: 1, days: 7, free_uses: 10 },
+      { id: 'pro',   label: '专业·月度',      cny: 60, days: 31, free_uses: 10 },
+      { id: 'pro3',  label: '专业·季度',      cny: 150, days: 93, free_uses: 10 },
+      { id: 'proY',  label: '专业·年度',      cny: 500, days: 366, free_uses: 10 },
+      { id: 'team',  label: '团队·年度',      cny: 299, days: 366, free_uses: 10 }
+    ];
+    const handle = (body) => {
+      const ref = String((body && body.ref) != null ? body.ref : (q.ref || '')).slice(0, 64);
+      const action = String((body && body.action) != null ? body.action : (q.action || p[1] || (sub === 'subwall' ? 'check' : 'entitle'))).slice(0, 24);
+      if (sub === 'entitle') {
+        // Vercel 侧没有付费订单存储 → 诚实返回未付款，绝不授予权益
+        return json(res, { ok: true, paid: false, reason: 'no_paid_order' });
+      }
+      if (action === 'plans') return json(res, { ok: true, plans: SW_PLANS });
+      if (action === 'subscribe' || action === 'extend' || action === 'activate') {
+        // fail-closed：公共端点不开通/不延长付费权益
+        return json(res, { ok: false, error: 'subscribe_closed' });
+      }
+      if (action === 'unsubscribe') return json(res, { ok: false, error: 'unknown_ref' });
+      if (action === 'check' || action === 'list') {
+        if (!/^[A-Za-z0-9_.-]{1,64}$/.test(ref)) return json(res, { ok: false, error: 'missing_or_invalid_ref' });
+        return json(res, action === 'check'
+          ? { ok: true, subscribed: false, plan: 'free', days_remaining: null, since: null }
+          : { ok: true, items: [] });
+      }
+      return json(res, { ok: false, error: 'unknown_action' });
+    };
+    if (req.method === 'GET') return handle(null);
+    if (req.method === 'POST') {
+      let raw = '';
+      req.on('data', c => { raw += c; if (raw.length > 1e6) req.destroy(); });
+      req.on('end', () => {
+        let body = null;
+        const ct = String(req.headers['content-type'] || '');
+        if (ct.includes('application/json')) { try { body = JSON.parse(raw); } catch (e) {} }
+        else if (ct.includes('application/x-www-form-urlencoded')) { try { body = Object.fromEntries(new URLSearchParams(raw)); } catch (e) {} }
+        else {
+          try { body = JSON.parse(raw); }
+          catch (e) { try { body = Object.fromEntries(new URLSearchParams(raw)); } catch (e2) {} }
+        }
+        handle(body || {});
+      });
+      return;
+    }
+    return json(res, { ok: false, error: 'method_not_allowed' }, 405);
+  }
+
   // GET /api/tools
   if (p[0] === 'tools' && p.length === 1 && req.method === 'GET') {
     const cat = q.category, query = (q.q || '').toLowerCase(), lang = q.lang || 'zh';
